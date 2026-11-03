@@ -1,9 +1,0 @@
-{
-  "name": "chua-online-chon-binh-an",
-  "version": "1.0.0",
-  "private": true,
-  "description": "Website chùa online 3D responsive với nhân vật chibi, nghi lễ, chat và bảng công đức",
-  "main": "server.js",
-  "scripts": {"start": "node server.js"},
-  "dependencies": {"express": "^4.21.2", "socket.io": "^4.8.1"}
-}
