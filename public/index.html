@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#4b291b">
+<title>Chùa Online — Chốn Bình An</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div id="setup" class="overlay">
+  <div class="setup-card">
+    <div class="lotus">✿</div><p class="eyebrow">CHỐN BÌNH AN</p>
+    <h1>Chùa Online</h1><p class="muted">Một góc nhỏ để tâm an, lòng tĩnh.</p>
+    <label for="nickname">Pháp danh / tên hiển thị</label>
+    <input id="nickname" maxlength="18" value="Tâm An" placeholder="Nhập tên của bạn">
+    <div class="role-grid">
+      <button class="role-choice selected" data-role="monk"><span class="avatar-preview monk-preview">🧘🏻‍♂️</span><b>Tiểu Sư Phụ</b><small>Hiền hòa · An nhiên</small></button>
+      <button class="role-choice" data-role="nun"><span class="avatar-preview nun-preview">🧘🏻‍♀️</span><b>Tiểu Sư Cô</b><small>Từ bi · Thanh tịnh</small></button>
+    </div>
+    <button id="enter" class="primary wide">Vào chánh điện <span>→</span></button>
+    <small class="fineprint">Không gian mô phỏng mang tính trải nghiệm tinh thần.</small>
+  </div>
+</div>
+<header class="topbar">
+  <div class="brand"><span class="brand-lotus">✿</span><div><strong>Chùa Online</strong><small>Chốn Bình An</small></div></div>
+  <div class="top-controls">
+    <button id="musicToggle" class="control-pill" aria-pressed="false">♫ <span>Nhạc thiền</span> <b id="musicState">TẮT</b></button>
+    <label class="volume-control" title="Âm lượng">🔊 <input id="volume" type="range" min="0" max="100" value="35"></label>
+    <div class="online-pill">● <span id="onlineCount">0</span>/32</div>
+    <button id="leave" class="leave-btn">Rời chùa</button>
+  </div>
+</header>
+<main class="layout">
+  <section class="scene-panel">
+    <div class="scene-heading"><span>🏮</span><div><b>Chánh điện</b><small>Giữ lòng thanh tịnh · Tùy duyên hành lễ</small></div><span class="scene-live">● ĐANG MỞ</span></div>
+    <div id="sceneWrap"><canvas id="templeCanvas"></canvas>
+      <div class="scene-tip" id="sceneTip">Chạm vào nền để di chuyển · Chọn đệm ngồi để an tọa</div>
+      <div class="scene-label" id="sceneLabel">NAM MÔ A DI ĐÀ PHẬT</div>
+      <div id="toast" class="toast"></div>
+    </div>
+    <div class="action-bar">
+      <button data-action="stand" class="action-btn"><span>🧍</span><b>Đứng lên</b></button>
+      <button data-action="bow" class="action-btn"><span>🙏</span><b>Bái lạy</b><small>+5 điểm</small></button>
+      <button data-action="meditate" class="action-btn"><span>🧘</span><b>Ngồi thiền</b></button>
+      <button data-action="incense" class="action-btn"><span>🪔</span><b>Thắp hương</b><small>+10 điểm</small></button>
+      <button data-action="mallet" class="action-btn"><span>🪵</span><b>Gõ mõ</b><small>+1 điểm</small></button>
+      <button data-action="bell" class="action-btn"><span>🔔</span><b>Gõ chuông</b><small>+1 điểm</small></button>
+    </div>
+  </section>
+  <aside class="side-column">
+    <section class="panel profile-panel"><div class="panel-title"><span>🪷</span><h2>Hành giả</h2></div><div class="profile-row"><div id="profileAvatar" class="profile-avatar">🧘🏻‍♂️</div><div><b id="profileName">Tâm An</b><small id="profileRole">Tiểu Sư Phụ · Đang an trú</small><div class="status"><i></i> Đang online</div></div></div><div class="merit-total"><span>Tổng điểm công đức</span><b id="myScore">0 <small>điểm</small></b></div></section>
+    <section class="panel chat-panel"><div class="panel-title"><span>💬</span><h2>Đạo hữu trò chuyện</h2><span class="tiny-count" id="chatCount">0</span></div><div id="chatFeed" class="chat-feed"><div class="system-message">🙏 Hoan nghênh đạo hữu đến với Chùa Online.</div></div><form id="chatForm" class="chat-form"><input id="chatInput" maxlength="160" placeholder="Gửi lời an lành..." autocomplete="off"><button aria-label="Gửi tin nhắn">➤</button></form></section>
+    <section class="panel merit-panel"><div class="panel-title"><span>🏆</span><h2>Bảng công đức</h2></div><div id="leaderboard" class="leaderboard"><div class="empty-rank">Hãy thực hành để ghi nhận công đức đầu tiên.</div></div><div class="points-guide"><b>Cách tính điểm</b><div><span>🪔 Thắp hương</span><strong>+10</strong></div><div><span>🙏 Bái lạy</span><strong>+5</strong></div><div><span>🪷 Góp công đức</span><strong>+5</strong></div><div><span>🪵 Gõ mõ</span><strong>+1</strong></div><div><span>🔔 Gõ chuông</span><strong>+1</strong></div></div></section>
+  </aside>
+</main>
+<button id="donateFab" class="donate-fab"><span>🪷</span><span><b>Thùng công đức</b><small>Tùy tâm cúng dường</small></span><strong>＋</strong></button>
+<div id="donateModal" class="overlay hidden"><div class="donate-card"><button id="closeDonate" class="close-btn">×</button><div class="donate-icon">🪷</div><h2>Gieo duyên công đức</h2><p>Chọn mức cúng dường mô phỏng. Đây không phải giao dịch tiền thật.</p><div class="amount-grid"><button data-amount="5000">5.000đ</button><button data-amount="10000">10.000đ</button><button data-amount="20000" class="selected">20.000đ</button><button data-amount="50000">50.000đ</button><button data-amount="100000">100.000đ</button></div><button id="confirmDonate" class="primary wide">Hoan hỷ công đức</button></div></div>
+<div id="mobileChatToggle" class="mobile-chat-toggle">💬 Trò chuyện</div>
+<script src="/socket.io/socket.io.js"></script>
+<script type="module" src="app.js"></script>
+</body></html>
