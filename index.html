@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chùa Online - Chốn Bình An</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Be Vietnam Pro & Playfair Display -->
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;1,400&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        temple: {
+                            gold: '#D4AF37',
+                            goldLight: '#F3E5AB',
+                            wood: '#5C3A21',
+                            woodDark: '#3A2211',
+                            red: '#8B0000',
+                            redAccent: '#A91B0D',
+                            bg: '#FDF8EC',
+                            card: '#FFFDF9'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Be Vietnam Pro', 'sans-serif'],
+                        serif: ['Playfair Display', 'serif']
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Be Vietnam Pro', sans-serif;
+            user-select: none;
+            overflow: hidden;
+            background-color: #1a0f07;
+        }
+
+        /* Continuous Halo Glow animation */
+        @keyframes haloPulse {
+            0% { transform: scale(0.98); opacity: 0.85; filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.8)); }
+            50% { transform: scale(1.05); opacity: 1; filter: drop-shadow(0 0 35px rgba(255, 223, 0, 1)); }
+            100% { transform: scale(0.98); opacity: 0.85; filter: drop-shadow(0 0 15px rgba(255, 215, 0, 0.8)); }
+        }
+
+        .halo-glow {
+            animation: haloPulse 4s infinite ease-in-out;
+        }
+
+        /* Incense Smoke Animation */
+        @keyframes smokeRise {
+            0% { transform: translateY(0) scaleX(1); opacity: 0.7; }
+            50% { transform: translateY(-20px) scaleX(1.4); opacity: 0.4; }
+            100% { transform: translateY(-40px) scaleX(2); opacity: 0; }
+        }
+
+        .smoke-particle {
+            animation: smokeRise 3s infinite linear;
+        }
+
+        /* Marquee Text Animation */
+        @keyframes marquee {
+            0% { transform: translateX(100vw); }
+            100% { transform: translateX(-100%); }
+        }
+
+        .animate-marquee {
+            display: inline-block;
+            white-space: nowrap;
+            animation: marquee 18s linear infinite;
+        }
+
+        /* Floating Chat Bubbles over Characters */
+        .chat-bubble {
+            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            from { transform: scale(0) translateY(10px); opacity: 0; }
+            to { transform: scale(1) translateY(0); opacity: 1; }
+        }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(92, 58, 33, 0.1);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #8B0000;
+            border-radius: 4px;
+        }
+
+        /* Canvas Map Area */
+        #game-container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            background: linear-gradient(135deg, #2c1810 0%, #150a05 100%);
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body class="text-slate-800">
+
+    <!-- AUDIO PLAYER FOR BACKGROUND MUSIC -->
+    <audio id="bg-music" loop preload="auto">
+        <source src="nhac-thien.mp3" type="audio/mpeg">
+        <!-- Fallback standard royalty free meditation audio snippet if file not found locally -->
+        <source src="https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3?filename=meditation-zen-11428.mp3" type="audio/mpeg">
+    </audio>
+
+    <!-- MAIN GAME WRAPPER -->
+    <div id="game-container" class="relative w-full h-screen overflow-hidden flex flex-col justify-between">
+
+        <!-- TOP BAR / HEADER -->
+        <header class="relative z-30 flex items-center justify-between p-3 bg-gradient-to-b from-black/80 to-transparent text-white">
+            <!-- Temple Logo & Title -->
+            <div class="flex items-center space-x-3 bg-temple-woodDark/80 backdrop-blur border border-temple-gold/40 px-4 py-2 rounded-full shadow-lg">
+                <div class="w-10 h-10 rounded-full bg-temple-gold flex items-center justify-center text-temple-red shadow">
+                    <i class="fa-solid font-bold text-xl fa-spa"></i>
+                </div>
+                <div>
+                    <h1 class="font-serif font-bold text-base md:text-lg text-temple-goldLight leading-tight">Chùa Online</h1>
+                    <p class="text-xs text-amber-200/80 italic">Chốn Bình An & Tịnh Tâm</p>
+                </div>
+            </div>
+
+            <!-- Top Notification Marquee Bar -->
+            <div class="hidden md:flex flex-1 mx-6 overflow-hidden bg-black/40 border border-temple-gold/30 rounded-full px-4 py-1.5 items-center text-amber-100 text-sm">
+                <i class="fa-solid fa-bullhorn text-temple-gold mr-3 shrink-0"></i>
+                <div class="overflow-hidden w-full relative">
+                    <div id="marquee-container" class="animate-marquee">
+                        Nam Mô A Di Đà Phật • Chào mừng quý Phật tử ghé thăm chùa • Chúc mọi sự an lành, vạn sự như ý!
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats & Controls Panel -->
+            <div class="flex items-center space-x-3">
+                <!-- User Merit Count -->
+                <div class="flex items-center bg-amber-950/80 border border-amber-500/40 px-3 py-1.5 rounded-full text-amber-300 text-xs md:text-sm font-semibold">
+                    <i class="fa-solid fa-hands-praying text-temple-gold mr-2 text-base"></i>
+                    <span>Công đức: <strong id="user-merit" class="text-white text-base ml-1">0</strong></span>
+                </div>
+
+                <!-- Music Control -->
+                <button id="btn-toggle-music" onclick="toggleMusic()" class="flex items-center space-x-1.5 bg-temple-wood/90 hover:bg-temple-woodDark text-amber-100 border border-temple-gold/40 px-3 py-1.5 rounded-full text-xs transition-all shadow">
+                    <i id="music-icon" class="fa-solid fa-music text-temple-gold"></i>
+                    <span id="music-text" class="hidden sm:inline">Nhạc Thiền: Tắt</span>
+                </button>
+
+                <!-- Audio Volume Slider -->
+                <input type="range" id="volume-slider" min="0" max="1" step="0.05" value="0.4" onchange="setVolume(this.value)" class="w-16 accent-temple-gold cursor-pointer hidden sm:block">
+
+                <!-- Online Counter -->
+                <div class="flex items-center bg-emerald-950/80 border border-emerald-500/40 px-3 py-1.5 rounded-full text-emerald-300 text-xs font-medium">
+                    <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse mr-2"></span>
+                    <span id="online-count">32 / 50</span>
+                </div>
+
+                <!-- Leaderboard Trigger -->
+                <button onclick="openLeaderboard()" class="bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-500 hover:to-amber-600 text-white w-9 h-9 rounded-full flex items-center justify-center border border-amber-300 shadow transition transform hover:scale-105" title="Bảng xếp hạng công đức">
+                    <i class="fa-solid fa-trophy text-amber-200"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN SCENE CANVAS / INTERACTIVE AREA -->
+        <main id="temple-viewport" class="absolute inset-0 z-10 w-full h-full overflow-hidden cursor-crosshair" onclick="handleViewportClick(event)">
+            
+            <!-- BACKGROUND TEMPLE CANVAS -->
+            <canvas id="temple-canvas" class="w-full h-full block"></canvas>
+
+            <!-- INTERACTIVE OBJECT OVERLAYS (Mõ, Chuông, Thùng Công Đức, Lư Hương) -->
+            <!-- Incense Burner / Altar Hotspot -->
+            <div style="left: 50%; top: 38%; transform: translate(-50%, -50%);" class="absolute z-20 flex flex-col items-center group cursor-pointer" onclick="actionIncense(event)" title="Nhấp để Thắp Hương (+10 công đức)">
+                <div class="px-2 py-0.5 bg-black/60 text-amber-200 text-[10px] rounded border border-amber-500/30 opacity-0 group-hover:opacity-100 transition">Thắp Hương</div>
+                <div class="relative w-12 h-12 flex items-center justify-center">
+                    <!-- Smoke particles -->
+                    <div class="absolute -top-4 w-1 h-3 bg-gray-200/50 rounded-full smoke-particle"></div>
+                    <div class="absolute -top-6 left-5 w-1 h-4 bg-gray-300/40 rounded-full smoke-particle" style="animation-delay: 1s;"></div>
+                </div>
+            </div>
+
+            <!-- Wooden Fish / Mõ Hotspot -->
+            <div style="left: 42%; top: 44%; transform: translate(-50%, -50%);" class="absolute z-20 flex flex-col items-center group cursor-pointer" onclick="actionWoodenFish(event)" title="Nhấp để Gõ Mõ (+1 công đức)">
+                <div class="px-2 py-0.5 bg-black/60 text-amber-200 text-[10px] rounded border border-amber-500/30 opacity-0 group-hover:opacity-100 transition">Gõ Mõ</div>
+                <div class="w-10 h-10 rounded-full bg-amber-900/40 hover:bg-amber-700/50 flex items-center justify-center border border-amber-500/30">
+                    <span class="text-xl">🪵</span>
+                </div>
+            </div>
+
+            <!-- Temple Bell / Chuông Hotspot -->
+            <div style="left: 58%; top: 44%; transform: translate(-50%, -50%);" class="absolute z-20 flex flex-col items-center group cursor-pointer" onclick="actionBell(event)" title="Nhấp để Đánh Chuông">
+                <div class="px-2 py-0.5 bg-black/60 text-amber-200 text-[10px] rounded border border-amber-500/30 opacity-0 group-hover:opacity-100 transition">Đánh Chuông</div>
+                <div class="w-10 h-10 rounded-full bg-amber-900/40 hover:bg-amber-700/50 flex items-center justify-center border border-amber-500/30">
+                    <span class="text-xl">🔔</span>
+                </div>
+            </div>
+
+            <!-- Donation Box / Thùng Công Đức -->
+            <div style="left: 35%; top: 48%; transform: translate(-50%, -50%);" class="absolute z-20 flex flex-col items-center group cursor-pointer" onclick="actionDonate(event)" title="Thùng công đức">
+                <div class="px-2 py-0.5 bg-black/60 text-amber-200 text-[10px] rounded border border-amber-500/30 opacity-0 group-hover:opacity-100 transition">Công Đức</div>
+                <div class="w-9 h-10 bg-amber-950/80 hover:bg-amber-800 border border-amber-500/50 rounded flex items-center justify-center shadow-lg">
+                    <i class="fa-solid fa-box-archive text-amber-400 text-sm"></i>
+                </div>
+            </div>
+
+        </main>
+
+        <!-- RIGHT SIDEBAR PANEL: CHAT & PRAYERS -->
+        <aside id="chat-sidebar" class="absolute right-3 top-20 bottom-24 z-30 w-72 md:w-80 bg-temple-card/90 backdrop-blur-md border border-temple-gold/40 rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 transform translate-x-0">
+            <!-- Tabs header -->
+            <div class="flex bg-temple-wood/90 text-amber-100 text-sm font-medium border-b border-temple-gold/30">
+                <button id="tab-chat-btn" onclick="switchTab('chat')" class="flex-1 py-2.5 text-center bg-temple-woodDark text-temple-gold font-semibold border-b-2 border-temple-gold">
+                    <i class="fa-solid fa-comments mr-1.5"></i>Trò chuyện
+                </button>
+                <button id="tab-prayer-btn" onclick="switchTab('prayer')" class="flex-1 py-2.5 text-center hover:bg-temple-woodDark/50 transition">
+                    <i class="fa-solid fa-scroll mr-1.5"></i>Lời nguyện
+                </button>
+            </div>
+
+            <!-- Chat Content -->
+            <div id="tab-chat-content" class="flex-1 flex flex-col p-3 overflow-hidden">
+                <div id="chat-messages" class="flex-1 overflow-y-auto space-y-2.5 pr-1">
+                    <!-- Dynamic chat messages go here -->
+                </div>
+                <form onsubmit="sendChatMessage(event)" class="mt-2 flex items-center space-x-2">
+                    <input type="text" id="chat-input" maxlength="80" placeholder="Nhập tin nhắn..." class="flex-1 bg-amber-50 border border-amber-300 text-xs md:text-sm rounded-full px-3 py-2 focus:outline-none focus:ring-2 focus:ring-temple-gold">
+                    <button type="submit" class="bg-temple-red hover:bg-temple-redAccent text-white w-9 h-9 rounded-full flex items-center justify-center shrink-0 shadow">
+                        <i class="fa-solid fa-paper-plane text-xs"></i>
+                    </button>
+                </form>
+            </div>
+
+            <!-- Prayer Content -->
+            <div id="tab-prayer-content" class="hidden flex-1 flex flex-col p-3 overflow-hidden bg-amber-50/40">
+                <p class="text-xs text-amber-900 mb-2 italic">Gửi lời nguyện ước của bạn lên dòng thông báo chung để cầu bình an cho gia đình & người thân.</p>
+                <textarea id="prayer-input" rows="4" maxlength="150" placeholder="Nguyện cho bản thân và gia đình luôn bình an, hạnh phúc, mọi điều hanh thông..." class="w-full bg-white border border-amber-300 text-xs md:text-sm rounded-xl p-3 focus:outline-none focus:ring-2 focus:ring-temple-gold resize-none mb-3"></textarea>
+                <button onclick="sendPrayer()" class="w-full bg-gradient-to-r from-amber-600 to-amber-700 hover:from-amber-700 hover:to-amber-800 text-white py-2 rounded-xl text-sm font-semibold shadow border border-amber-400 transition">
+                    <i class="fa-solid fa-hands-praying mr-2"></i>Gửi Lời Nguyện
+                </button>
+            </div>
+        </aside>
+
+        <!-- BOTTOM ACTION CONTROLS BAR -->
+        <footer class="relative z-30 w-full p-3 bg-gradient-to-t from-black/90 via-black/60 to-transparent flex flex-col md:flex-row items-center justify-center gap-3">
+            <div class="flex items-center justify-center flex-wrap gap-2 md:gap-3 bg-temple-wood/90 backdrop-blur-md border border-temple-gold/40 px-4 py-2 rounded-2xl shadow-2xl">
+                
+                <!-- Action Buttons -->
+                <button onclick="userBow()" class="flex flex-col items-center justify-center w-14 h-14 sm:w-16 sm:h-16 bg-amber-100/90 hover:bg-amber-200 text-temple-woodDark rounded-xl border border-amber-400/60 shadow transition transform hover:-translate-y-1 active:scale-95">
+                    <span class="text-lg">🙏</span>
+                    <span class="text-[11px] font-semibold mt-0.5">Bái Lạy</span>
+                </button>
+
+                <button onclick="userMeditate()" class="flex flex-col items-center justify-center w-14 h-14 sm:w-16 sm:h-16 bg-amber-100/90 hover:bg-amber-200 text-temple-woodDark rounded-xl border border-amber-400/60 shadow transition transform hover:-translate-y-1 active:scale-95">
+                    <span class="text-lg">🧘</span>
+                    <span class="text-[11px] font-semibold mt-0.5">Thiền</span>
+                </button>
+
+                <button onclick="userSitDown()" class="flex flex-col items-center justify-center w-14 h-14 sm:w-16 sm:h-16 bg-amber-100/90 hover:bg-amber-200 text-temple-woodDark rounded-xl border border-amber-400/60 shadow transition transform hover:-translate-y-1 active:scale-95">
+                    <span class="text-lg">🧎</span>
+                    <span class="text-[11px] font-semibold mt-0.5">Ngồi</span>
+                </button>
+
+                <button onclick="userStandUp()" class="flex flex-col items-center justify-center w-14 h-14 sm:w-16 sm:h-16 bg-amber-100/90 hover:bg-amber-200 text-temple-woodDark rounded-xl border border-amber-400/60 shadow transition transform hover:-translate-y-1 active:scale-95">
+                    <span class="text-lg">🧍</span>
+                    <span class="text-[11px] font-semibold mt-0.5">Đứng lên</span>
+                </button>
+
+                <button onclick="actionIncense(event)" class="flex flex-col items-center justify-center w-14 h-14 sm:w-16 sm:h-16 bg-amber-100/90 hover:bg-amber-200 text-temple-woodDark rounded-xl border border-amber-400/60 shadow transition transform hover:-translate-y-1 active:scale-95">
+                    <span class="text-lg">🕯️</span>
+                    <span class="text-[11px] font-semibold mt-0.5">Thắp Hương</span>
+                </button>
+
+                <button onclick="actionWoodenFish(event)" class="flex flex-col items-center justify-center w-14 h-14 sm:w-16 sm:h-16 bg-amber-100/90 hover:bg-amber-200 text-temple-woodDark rounded-xl border border-amber-400/60 shadow transition transform hover:-translate-y-1 active:scale-95">
+                    <span class="text-lg">🪵</span>
+                    <span class="text-[11px] font-semibold mt-0.5">Gõ Mõ</span>
+                </button>
+
+                <button onclick="actionBell(event)" class="flex flex-col items-center justify-center w-14 h-14 sm:w-16 sm:h-16 bg-amber-100/90 hover:bg-amber-200 text-temple-woodDark rounded-xl border border-amber-400/60 shadow transition transform hover:-translate-y-1 active:scale-95">
+                    <span class="text-lg">🔔</span>
+                    <span class="text-[11px] font-semibold mt-0.5">Đánh Chuông</span>
+                </button>
+            </div>
+        </footer>
+
+    </div>
+
+    <!-- MODAL 1: LOGIN / NICKNAME SELECTION -->
+    <div id="login-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-md p-4">
+        <div class="bg-temple-card border-2 border-temple-gold max-w-md w-full rounded-3xl p-6 sm:p-8 shadow-2xl text-center relative overflow-hidden">
+            <!-- Decorative Buddha Icon Header -->
+            <div class="w-20 h-20 mx-auto -mt-2 mb-4 rounded-full bg-gradient-to-tr from-amber-500 to-amber-200 flex items-center justify-center shadow-lg border-2 border-white">
+                <i class="fa-solid fa-spa text-temple-woodDark text-4xl"></i>
+            </div>
+            
+            <h2 class="font-serif font-bold text-2xl text-temple-woodDark mb-1">Chùa Online Chốn Bình An</h2>
+            <p class="text-xs text-amber-800 mb-6">Nhập pháp danh/biệt danh và chọn hình đại diện để vào chùa tu tập</p>
+
+            <form onsubmit="startGame(event)" class="space-y-5">
+                <div>
+                    <label class="block text-left text-xs font-semibold text-temple-woodDark mb-1.5 ml-1">Tên của bạn (Nick Name / Pháp danh):</label>
+                    <input type="text" id="nickname-input" required max="20" placeholder="Ví dụ: Tâm An, Thích Thật Thà..." class="w-full bg-amber-50/50 border border-amber-300 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-temple-gold text-slate-800 font-medium">
+                </div>
+
+                <div>
+                    <label class="block text-left text-xs font-semibold text-temple-woodDark mb-2 ml-1">Chọn Giới tính / Nhân vật Chibi:</label>
+                    <div class="grid grid-cols-2 gap-4">
+                        <!-- Male Chibi Option -->
+                        <label class="cursor-pointer border-2 border-amber-200 hover:border-amber-400 rounded-2xl p-3 flex flex-col items-center bg-amber-50/30 transition has-[:checked]:border-temple-gold has-[:checked]:bg-amber-100/60 shadow-sm">
+                            <input type="radio" name="gender" value="male" checked class="hidden">
+                            <div class="w-14 h-14 rounded-full bg-amber-200/60 flex items-center justify-center text-3xl mb-1">🧑‍🦲</div>
+                            <span class="text-xs font-bold text-temple-woodDark">Tiểu sư chú (Nam)</span>
+                        </label>
+
+                        <!-- Female Chibi Option -->
+                        <label class="cursor-pointer border-2 border-amber-200 hover:border-amber-400 rounded-2xl p-3 flex flex-col items-center bg-amber-50/30 transition has-[:checked]:border-temple-gold has-[:checked]:bg-amber-100/60 shadow-sm">
+                            <input type="radio" name="gender" value="female" class="hidden">
+                            <div class="w-14 h-14 rounded-full bg-amber-200/60 flex items-center justify-center text-3xl mb-1">👧</div>
+                            <span class="text-xs font-bold text-temple-woodDark">Tiểu sư cô (Nữ)</span>
+                        </label>
+                    </div>
+                </div>
+
+                <button type="submit" class="w-full bg-gradient-to-r from-amber-600 via-amber-700 to-amber-800 hover:from-amber-700 hover:to-amber-900 text-white font-bold py-3.5 rounded-xl shadow-lg border border-amber-300 text-base transition transform hover:scale-[1.02]">
+                    Vào Chùa Bái Phật <i class="fa-solid fa-arrow-right ml-2"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 2: LEADERBOARD TOP 10 -->
+    <div id="leaderboard-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4">
+        <div class="bg-temple-card border-2 border-temple-gold max-w-md w-full rounded-3xl p-6 shadow-2xl relative">
+            <button onclick="closeLeaderboard()" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600 w-8 h-8 rounded-full flex items-center justify-center">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+
+            <div class="text-center mb-5">
+                <div class="w-14 h-14 mx-auto rounded-full bg-amber-100 border border-amber-400 flex items-center justify-center text-amber-600 text-2xl shadow-sm mb-2">
+                    <i class="fa-solid fa-trophy"></i>
+                </div>
+                <h3 class="font-serif font-bold text-xl text-temple-woodDark">Bảng Xếp Hạng Công Đức</h3>
+                <p class="text-xs text-amber-700">Top 10 Phật tử tích lũy công đức cao nhất</p>
+            </div>
+
+            <div id="leaderboard-list" class="space-y-2 max-h-72 overflow-y-auto pr-1">
+                <!-- Rendered dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- WELCOME TOAST NOTIFICATION -->
+    <div id="welcome-toast" class="fixed top-16 left-1/2 transform -translate-x-1/2 z-40 hidden transition-all duration-500">
+        <div class="bg-gradient-to-r from-amber-700 via-amber-800 to-amber-900 text-amber-100 px-6 py-3 rounded-full border-2 border-temple-gold shadow-2xl flex items-center space-x-3 text-sm md:text-base font-semibold">
+            <i class="fa-solid fa-spa text-temple-gold text-xl animate-bounce"></i>
+            <span id="welcome-message">Chào mừng đến với Chùa Online!</span>
+        </div>
+    </div>
+
+
+    <!-- MAIN JAVASCRIPT LOGIC -->
+    <script>
+        /* --- AUDIO SYNTHESIZER (Web Audio API) FOR SOUND EFFECTS --- */
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        let audioCtx = null;
+
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new AudioCtx();
+            }
+        }
+
+        // Play Wooden Fish (Mõ) Sound
+        function playWoodenFishSound() {
+            initAudio();
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(600, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(120, audioCtx.currentTime + 0.12);
+
+            gain.gain.setValueAtTime(0.8, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.12);
+        }
+
+        // Play Temple Bell (Chuông) Sound
+        function playBellSound() {
+            initAudio();
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(432, audioCtx.currentTime); // 432 Hz healing tone
+
+            gain.gain.setValueAtTime(0.9, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 3.5);
+
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 3.5);
+        }
+
+        /* --- GAME STATE & CONSTANTS --- */
+        let player = {
+            nickname: 'Tâm An',
+            gender: 'male',
+            x: 0,
+            y: 0,
+            targetX: 0,
+            targetY: 0,
+            action: 'idle', // 'idle', 'bow', 'meditate', 'sit'
+            merit: 0
+        };
+
+        let npcs = []; // Simulated online users
+        let chatMessages = [];
+        let leaderboards = [
+            { name: 'Thích Minh Tuệ', merit: 1250 },
+            { name: 'Tâm An', merit: 890 },
+            { name: 'Thiện Tâm', merit: 740 },
+            { name: 'Hoa Sen', merit: 620 },
+            { name: 'An Nhiên', merit: 550 },
+            { name: 'Phúc Đức', merit: 480 },
+            { name: 'Diệu Tâm', merit: 390 },
+            { name: 'Trí Tuệ', merit: 310 },
+            { name: 'Quang Minh', merit: 270 },
+            { name: 'Hạnh Nguyện', merit: 210 }
+        ];
+
+        // 32 Mats Positions (16 on Left side of carpet, 16 on Right side)
+        const mats = [];
+
+        /* --- CANVAS ENGINE --- */
+        let canvas, ctx;
+        
+        window.onload = function() {
+            canvas = document.getElementById('temple-canvas');
+            ctx = canvas.getContext('2d');
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+
+            // Generate 32 mat coordinates symmetrically
+            generateMatPositions();
+
+            // Spawn ~30 NPC Chibi Characters
+            generateSimulatedNPCs(28);
+
+            // Start Canvas Render Loop
+            requestAnimationFrame(renderLoop);
+
+            // Add keyboard navigation (Arrow keys / WASD)
+            window.addEventListener('keydown', handleKeyDown);
+        };
+
+        function resizeCanvas() {
+            if (!canvas) return;
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            // Update player starting position to center if not set
+            if (player.x === 0 && player.y === 0) {
+                player.x = canvas.width / 2;
+                player.y = canvas.height * 0.75;
+                player.targetX = player.x;
+                player.targetY = player.y;
+            }
+            generateMatPositions();
+        }
+
+        function generateMatPositions() {
+            mats.length = 0;
+            const centerX = canvas.width / 2;
+            const startY = canvas.height * 0.42;
+            const rowHeight = 35;
+            const colWidth = 45;
+
+            // 16 mats left side (4 cols x 4 rows)
+            for (let r = 0; r < 4; r++) {
+                for (let c = 0; c < 4; c++) {
+                    mats.push({
+                        x: centerX - 120 - (c * colWidth),
+                        y: startY + (r * rowHeight)
+                    });
+                }
+            }
+
+            // 16 mats right side (4 cols x 4 rows)
+            for (let r = 0; r < 4; r++) {
+                for (let c = 0; c < 4; c++) {
+                    mats.push({
+                        x: centerX + 120 + (c * colWidth),
+                        y: startY + (r * rowHeight)
+                    });
+                }
+            }
+        }
+
+        function generateSimulatedNPCs(count) {
+            const names = ['Thích Đạt', 'Tuệ Minh', 'Hạnh Nguyện', 'Thiện Đức', 'Tâm Bình', 'Diệu Âm', 'Bảo An', 'Tịnh Tâm', 'Minh Tuệ', 'Liên Hoa', 'Đại Nguyện', 'Chí Tâm', 'Văn Thù', 'Phổ Hiền', 'Địa Tạng', 'Kinh Trụ', 'Vạn Phúc'];
+            const genders = ['male', 'female'];
+            const actions = ['meditate', 'sit', 'idle', 'bow'];
+
+            for (let i = 0; i < count; i++) {
+                const assignedMat = mats[i % mats.length];
+                npcs.push({
+                    id: i,
+                    name: names[i % names.length] + " " + (i + 1),
+                    gender: genders[Math.floor(Math.random() * genders.length)],
+                    x: assignedMat ? assignedMat.x : Math.random() * canvas.width,
+                    y: assignedMat ? assignedMat.y : Math.random() * canvas.height * 0.5 + canvas.height * 0.3,
+                    action: actions[Math.floor(Math.random() * actions.length)],
+                    chatBubble: null,
+                    chatTimer: 0
+                });
+            }
+        }
+
+        /* --- RENDER ENGINE LOOP --- */
+        function renderLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Draw Background Architecture (Chánh điện, Tượng phật, Sân)
+            drawTempleEnvironment();
+
+            // Smoothly move Player towards target
+            updatePlayerPosition();
+
+            // Update NPC behavior (occasional movement/action change)
+            updateNPCs();
+
+            // Sort all entities (Player + NPCs) by Y coordinate for correct depth layering
+            const entities = [
+                { isPlayer: true, ...player },
+                ...npcs.map(n => ({ isPlayer: false, ...n }))
+            ];
+            entities.sort((a, b) => a.y - b.y);
+
+            // Render Entities
+            entities.forEach(entity => {
+                drawChibiCharacter(entity);
+            });
+
+            requestAnimationFrame(renderLoop);
+        }
+
+        /* --- DRAW TEMPLE SCENERY & BUDDHA --- */
+        function drawTempleEnvironment() {
+            const w = canvas.width;
+            const h = canvas.height;
+            const cx = w / 2;
+
+            // 1. Floor Background (Warm Wooden Flooring)
+            ctx.fillStyle = '#4a2c17';
+            ctx.fillRect(0, 0, w, h);
+
+            // Wood Planks details
+            ctx.strokeStyle = '#382010';
+            ctx.lineWidth = 1;
+            for (let y = 0; y < h; y += 40) {
+                ctx.beginPath();
+                ctx.moveTo(0, y);
+                ctx.lineTo(w, y);
+                ctx.stroke();
+            }
+
+            // 2. Main Red Carpet down the center aisle
+            const carpetWidth = 160;
+            ctx.fillStyle = '#8B0000';
+            ctx.fillRect(cx - carpetWidth / 2, h * 0.35, carpetWidth, h * 0.65);
+            // Carpet Gold Borders
+            ctx.strokeStyle = '#D4AF37';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(cx - carpetWidth / 2, h * 0.35, carpetWidth, h * 0.65);
+
+            // 3. Outdoor Courtyard (Sân Chùa) area at the bottom corners
+            ctx.fillStyle = '#2c3b27'; // Garden green/stone area
+            ctx.beginPath();
+            ctx.arc(80, h - 60, 140, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Round Table + 4 Chairs outside in garden
+            ctx.fillStyle = '#7a5230';
+            ctx.beginPath();
+            ctx.arc(90, h - 70, 28, 0, Math.PI * 2); // Table
+            ctx.fill();
+            ctx.strokeStyle = '#D4AF37';
+            ctx.stroke();
+            // 4 Chairs around table
+            const chairOffsets = [[-38, 0], [38, 0], [0, -38], [0, 38]];
+            ctx.fillStyle = '#5c3a21';
+            chairOffsets.forEach(([ox, oy]) => {
+                ctx.beginPath();
+                ctx.arc(90 + ox, h - 70 + oy, 10, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // 4. Buddha Altar Sanctuary (Khu vương điện) Top Center
+            // Halo Glow Background effect
+            const haloRadius = 90;
+            const time = Date.now() * 0.003;
+            const haloPulseScale = 1 + Math.sin(time) * 0.08;
+
+            const haloGradient = ctx.createRadialGradient(cx, h * 0.2, 10, cx, h * 0.2, haloRadius * haloPulseScale);
+            haloGradient.addColorStop(0, 'rgba(255, 245, 150, 1)');
+            haloGradient.addColorStop(0.4, 'rgba(255, 215, 0, 0.8)');
+            haloGradient.addColorStop(1, 'rgba(255, 140, 0, 0)');
+            
+            ctx.fillStyle = haloGradient;
+            ctx.beginPath();
+            ctx.arc(cx, h * 0.2, haloRadius * haloPulseScale, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Golden Buddha Statue (Tượng Phật Thích Ca Mạ Vàng)
+            ctx.save();
+            ctx.translate(cx, h * 0.22);
+            
+            // Lotus Throne (Tòa sen)
+            ctx.fillStyle = '#e63946';
+            for (let i = -4; i <= 4; i++) {
+                ctx.beginPath();
+                ctx.ellipse(i * 12, 35, 14, 8, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Buddha Head & Body
+            ctx.fillStyle = '#ffd700'; // Pure Gold
+            // Body
+            ctx.beginPath();
+            ctx.arc(0, 15, 26, 0, Math.PI * 2);
+            ctx.fill();
+            // Head
+            ctx.beginPath();
+            ctx.arc(0, -15, 18, 0, Math.PI * 2);
+            ctx.fill();
+            // Hair Ushnisha
+            ctx.fillStyle = '#4a2c17';
+            ctx.beginPath();
+            ctx.arc(0, -32, 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+
+            // 5. Abbot / Head Monk Seat (Vị trí Trụ Trì) in front of Altar
+            ctx.fillStyle = '#d97706'; // Orange-gold cushion
+            ctx.beginPath();
+            ctx.ellipse(cx, h * 0.36, 22, 12, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#b45309';
+            ctx.stroke();
+
+            // 6. Draw 32 Meditation Mats (Đệm ngồi Phật tử)
+            mats.forEach(mat => {
+                ctx.fillStyle = '#b45309'; // Warm cushion color
+                ctx.beginPath();
+                ctx.ellipse(mat.x, mat.y, 16, 9, 0, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#fef3c7';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            });
+        }
+
+        /* --- DRAW CHIBI CHARACTER CARTOON --- */
+        function drawChibiCharacter(char) {
+            const { x, y, name, gender, action, isPlayer, chatBubble } = char;
+
+            ctx.save();
+            ctx.translate(x, y);
+
+            // Shadow under character
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+            ctx.beginPath();
+            ctx.ellipse(0, 8, 14, 6, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Action Offset logic
+            let headY = -22;
+            let bodyY = -6;
+
+            if (action === 'bow') { // Bái lạy
+                headY = -10;
+                bodyY = 0;
+            } else if (action === 'meditate' || action === 'sit') { // Ngồi
+                headY = -16;
+                bodyY = -3;
+            }
+
+            // Chibi Body / Monk Robe
+            ctx.fillStyle = isPlayer ? '#c2410c' : '#78350f'; // Player red-orange robe, NPCs brown robe
+            ctx.beginPath();
+            ctx.arc(0, bodyY, 12, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Chibi Head
+            ctx.fillStyle = '#fde047'; // Cute Skin tone
+            ctx.beginPath();
+            ctx.arc(0, headY, 13, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Hair / Gender detail
+            if (gender === 'female') {
+                // Little hair bun for female monk / nun chibi
+                ctx.fillStyle = '#292524';
+                ctx.beginPath();
+                ctx.arc(0, headY - 12, 5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Cute Eyes
+            ctx.fillStyle = '#1c1917';
+            if (action === 'meditate' || action === 'bow') {
+                // Closed eyes lines ^ ^
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.arc(-4, headY - 1, 3, Math.PI, 0);
+                ctx.arc(4, headY - 1, 3, Math.PI, 0);
+                ctx.stroke();
+            } else {
+                // Open eyes
+                ctx.beginPath();
+                ctx.arc(-4, headY - 1, 2.5, 0, Math.PI * 2);
+                ctx.arc(4, headY - 1, 2.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Namaste Hands 🙏 for bowing/sitting
+            if (action === 'bow' || action === 'meditate') {
+                ctx.fillStyle = '#fde047';
+                ctx.beginPath();
+                ctx.arc(0, bodyY - 2, 4, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Player Highlight Ring & Name Label
+            ctx.fillStyle = isPlayer ? '#fef08a' : '#ffffff';
+            ctx.font = isPlayer ? 'bold 11px Be Vietnam Pro' : '10px Be Vietnam Pro';
+            ctx.textAlign = 'center';
+            ctx.shadowColor = 'black';
+            ctx.shadowBlur = 4;
+            ctx.fillText(name, 0, headY - 17);
+            ctx.shadowBlur = 0;
+
+            // Draw Chat Bubble overhead if active
+            if (chatBubble) {
+                ctx.font = '11px Be Vietnam Pro';
+                const textWidth = ctx.measureText(chatBubble).width;
+                const bubbleWidth = textWidth + 16;
+                const bubbleHeight = 22;
+                const bubbleY = headY - 46;
+
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+                ctx.strokeStyle = '#d97706';
+                ctx.lineWidth = 1.5;
+
+                // Round rect bubble
+                ctx.beginPath();
+                ctx.roundRect(-bubbleWidth / 2, bubbleY, bubbleWidth, bubbleHeight, 8);
+                ctx.fill();
+                ctx.stroke();
+
+                // Bubble tail
+                ctx.beginPath();
+                ctx.moveTo(-4, bubbleY + bubbleHeight);
+                ctx.lineTo(0, bubbleY + bubbleHeight + 5);
+                ctx.lineTo(4, bubbleY + bubbleHeight);
+                ctx.fill();
+
+                ctx.fillStyle = '#1c1917';
+                ctx.textAlign = 'center';
+                ctx.fillText(chatBubble, 0, bubbleY + 14);
+            }
+
+            ctx.restore();
+        }
+
+        /* --- PLAYER INTERACTION & MOVEMENT --- */
+        function handleViewportClick(e) {
+            // Calculate target position inside canvas
+            const rect = canvas.getBoundingClientRect();
+            player.targetX = e.clientX - rect.left;
+            player.targetY = e.clientY - rect.top;
+            player.action = 'idle'; // Reset action when walking
+        }
+
+        function handleKeyDown(e) {
+            const step = 15;
+            if (e.key === 'ArrowUp' || e.key === 'w') player.targetY -= step;
+            if (e.key === 'ArrowDown' || e.key === 's') player.targetY += step;
+            if (e.key === 'ArrowLeft' || e.key === 'a') player.targetX -= step;
+            if (e.key === 'ArrowRight' || e.key === 'd') player.targetX += step;
+            player.action = 'idle';
+        }
+
+        function updatePlayerPosition() {
+            const dx = player.targetX - player.x;
+            const dy = player.targetY - player.y;
+            player.x += dx * 0.1;
+            player.y += dy * 0.1;
+        }
+
+        function updateNPCs() {
+            // Randomly trigger NPC chat or action change every few frames
+            npcs.forEach(npc => {
+                if (npc.chatTimer > 0) {
+                    npc.chatTimer--;
+                    if (npc.chatTimer <= 0) npc.chatBubble = null;
+                }
+            });
+        }
+
+        /* --- GAME ACTIONS & MERIT CALCULATION --- */
+        function addMerit(points, reason) {
+            player.merit += points;
+            document.getElementById('user-merit').innerText = player.merit;
+
+            // Show floating text notification
+            showToast(`+${points} Công đức (${reason})`);
+
+            // Update leaderboard entry for Player
+            const pEntry = leaderboards.find(l => l.name === player.nickname);
+            if (pEntry) {
+                pEntry.merit = player.merit;
+            } else {
+                leaderboards.push({ name: player.nickname, merit: player.merit });
+            }
+            leaderboards.sort((a, b) => b.merit - a.merit);
+        }
+
+        function actionWoodenFish(e) {
+            if (e) e.stopPropagation();
+            playWoodenFishSound();
+            player.action = 'sit';
+            addMerit(1, 'Gõ Mõ');
+        }
+
+        function actionBell(e) {
+            if (e) e.stopPropagation();
+            playBellSound();
+            player.action = 'sit';
+            showToast('Tiếng chuông thanh tịnh tâm hồn...');
+        }
+
+        function actionIncense(e) {
+            if (e) e.stopPropagation();
+            player.action = 'bow';
+            addMerit(10, 'Thắp Hương');
+        }
+
+        function actionDonate(e) {
+            if (e) e.stopPropagation();
+            addMerit(20, 'Tùy hỷ Công Đức');
+        }
+
+        function userBow() {
+            player.action = 'bow';
+            addMerit(5, 'Bái Lạy');
+        }
+
+        function userMeditate() {
+            player.action = 'meditate';
+            showToast('Đang Ngồi Thiền tịnh tâm...');
+        }
+
+        function userSitDown() {
+            player.action = 'sit';
+        }
+
+        function userStandUp() {
+            player.action = 'idle';
+        }
+
+        /* --- LOGIN & START GAME --- */
+        function startGame(e) {
+            e.preventDefault();
+            const nameInput = document.getElementById('nickname-input').value.trim();
+            const genderInput = document.querySelector('input[name="gender"]:checked').value;
+
+            if (!nameInput) return;
+
+            player.nickname = nameInput;
+            player.gender = genderInput;
+
+            // Close Login Modal
+            document.getElementById('login-modal').classList.add('hidden');
+
+            // Show Welcome Banner Toast
+            const welcomeToast = document.getElementById('welcome-toast');
+            document.getElementById('welcome-message').innerText = `Chào mừng ${player.nickname} vào chùa, chúc mọi sự bình an!`;
+            welcomeToast.classList.remove('hidden');
+
+            setTimeout(() => {
+                welcomeToast.classList.add('hidden');
+            }, 5000);
+
+            // Auto start background music (user gesture requirement satisfied)
+            toggleMusic(true);
+        }
+
+        /* --- MUSIC & AUDIO CONTROLS --- */
+        let isMusicPlaying = false;
+        const bgMusic = document.getElementById('bg-music');
+
+        function toggleMusic(forcePlay = false) {
+            if (!isMusicPlaying || forcePlay) {
+                bgMusic.play().then(() => {
+                    isMusicPlaying = true;
+                    document.getElementById('music-text').innerText = 'Nhạc Thiền: Bật';
+                    document.getElementById('music-icon').className = 'fa-solid fa-volume-high text-temple-gold';
+                }).catch(() => {
+                    console.log('Autoplay blocked');
+                });
+            } else {
+                bgMusic.pause();
+                isMusicPlaying = false;
+                document.getElementById('music-text').innerText = 'Nhạc Thiền: Tắt';
+                document.getElementById('music-icon').className = 'fa-solid fa-volume-xmark text-gray-400';
+            }
+        }
+
+        function setVolume(val) {
+            bgMusic.volume = val;
+        }
+
+        /* --- CHAT & PRAYER SYSTEM --- */
+        function switchTab(tab) {
+            const chatBtn = document.getElementById('tab-chat-btn');
+            const prayerBtn = document.getElementById('tab-prayer-btn');
+            const chatContent = document.getElementById('tab-chat-content');
+            const prayerContent = document.getElementById('tab-prayer-content');
+
+            if (tab === 'chat') {
+                chatBtn.className = 'flex-1 py-2.5 text-center bg-temple-woodDark text-temple-gold font-semibold border-b-2 border-temple-gold';
+                prayerBtn.className = 'flex-1 py-2.5 text-center hover:bg-temple-woodDark/50 transition text-amber-100';
+                chatContent.classList.remove('hidden');
+                prayerContent.classList.add('hidden');
+            } else {
+                prayerBtn.className = 'flex-1 py-2.5 text-center bg-temple-woodDark text-temple-gold font-semibold border-b-2 border-temple-gold';
+                chatBtn.className = 'flex-1 py-2.5 text-center hover:bg-temple-woodDark/50 transition text-amber-100';
+                prayerContent.classList.remove('hidden');
+                chatContent.classList.add('hidden');
+            }
+        }
+
+        function sendChatMessage(e) {
+            e.preventDefault();
+            const input = document.getElementById('chat-input');
+            const msg = input.value.trim();
+            if (!msg) return;
+
+            // Add to Chat Box
+            appendChatMessage(player.nickname, msg, true);
+            input.value = '';
+
+            // Set Chat Bubble over player head
+            player.chatBubble = msg;
+            setTimeout(() => {
+                player.chatBubble = null;
+            }, 4500);
+
+            // Simulate a friendly response from an online NPC occasionally
+            if (Math.random() > 0.4) {
+                setTimeout(() => {
+                    const randomNPC = npcs[Math.floor(Math.random() * npcs.length)];
+                    const responses = ['Nam Mô A Di Đà Phật 🙏', 'Chúc bạn nhiều sức khỏe!', 'An lành nhé!', 'Cùng nhau tu tập tốt ạ.'];
+                    const npcMsg = responses[Math.floor(Math.random() * responses.length)];
+                    
+                    randomNPC.chatBubble = npcMsg;
+                    randomNPC.chatTimer = 180;
+                    appendChatMessage(randomNPC.name, npcMsg, false);
+                }, 1500);
+            }
+        }
+
+        function appendChatMessage(sender, message, isSelf) {
+            const chatBox = document.getElementById('chat-messages');
+            const item = document.createElement('div');
+            item.className = `text-xs p-2 rounded-xl border ${isSelf ? 'bg-amber-100/80 border-amber-300 ml-3' : 'bg-white border-amber-200 mr-3'}`;
+            
+            const now = new Date();
+            const timeStr = `${now.getHours()}:${now.getMinutes().toString().padStart(2, '0')}`;
+
+            item.innerHTML = `
+                <div class="flex justify-between items-center mb-0.5">
+                    <strong class="${isSelf ? 'text-temple-red' : 'text-amber-900'} font-semibold">${sender}</strong>
+                    <span class="text-[9px] text-gray-400">${timeStr}</span>
+                </div>
+                <p class="text-slate-700 leading-snug">${escapeHtml(message)}</p>
+            `;
+            chatBox.appendChild(item);
+            chatBox.scrollTop = chatBox.scrollHeight;
+        }
+
+        function sendPrayer() {
+            const prayerInput = document.getElementById('prayer-input');
+            const text = prayerInput.value.trim();
+            if (!text) return;
+
+            // Update Marquee Text Banner at top
+            const marquee = document.getElementById('marquee-container');
+            marquee.innerText = `🙏 Lời nguyện từ ${player.nickname}: "${text}" • Nam Mô A Di Đà Phật •`;
+            
+            prayerInput.value = '';
+            showToast('Đã gửi lời nguyện ước lên chánh điện!');
+            switchTab('chat');
+        }
+
+        /* --- LEADERBOARD MODAL --- */
+        function openLeaderboard() {
+            const list = document.getElementById('leaderboard-list');
+            list.innerHTML = '';
+
+            leaderboards.slice(0, 10).forEach((entry, idx) => {
+                const row = document.createElement('div');
+                row.className = `flex items-center justify-between p-2.5 rounded-xl text-xs font-semibold ${idx === 0 ? 'bg-amber-100 border border-amber-400 text-amber-900' : 'bg-amber-50/60 text-slate-700'}`;
+                
+                let badge = `<span class="w-6 h-6 rounded-full bg-amber-200 text-amber-800 flex items-center justify-center text-[10px] mr-2 font-bold">${idx + 1}</span>`;
+                if (idx === 0) badge = `<span class="w-6 h-6 rounded-full bg-yellow-400 text-white flex items-center justify-center text-[10px] mr-2 shadow">🥇</span>`;
+                if (idx === 1) badge = `<span class="w-6 h-6 rounded-full bg-slate-300 text-slate-700 flex items-center justify-center text-[10px] mr-2 shadow">🥈</span>`;
+                if (idx === 2) badge = `<span class="w-6 h-6 rounded-full bg-amber-600 text-white flex items-center justify-center text-[10px] mr-2 shadow">🥉</span>`;
+
+                row.innerHTML = `
+                    <div class="flex items-center">
+                        ${badge}
+                        <span>${escapeHtml(entry.name)}</span>
+                    </div>
+                    <span class="text-temple-red font-bold">${entry.merit} điểm</span>
+                `;
+                list.appendChild(row);
+            });
+
+            document.getElementById('leaderboard-modal').classList.remove('hidden');
+        }
+
+        function closeLeaderboard() {
+            document.getElementById('leaderboard-modal').classList.add('hidden');
+        }
+
+        /* --- TOAST HELPER --- */
+        function showToast(msg) {
+            const toast = document.createElement('div');
+            toast.className = 'fixed bottom-24 left-1/2 transform -translate-x-1/2 z-50 bg-black/80 text-amber-200 text-xs px-4 py-2 rounded-full border border-amber-500/40 shadow-xl transition-all duration-300';
+            toast.innerText = msg;
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 2000);
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+    </script>
+</body>
+</html>
