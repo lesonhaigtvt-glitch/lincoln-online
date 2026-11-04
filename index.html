@@ -901,29 +901,90 @@ input::placeholder { color: var(--muted); }
     isPecking: false
   };
 
+  updateChicken và drawChicken (hoặc vị trí ngay bên dưới var me = { ... };) và thay bằng đoạn code nâng cấp sau:
+
+JavaScript
+
+
+  /* ---------- Con gà hoảng hốt bỏ chạy khi lại gần ---------- */
+  var chicken = {
+    x: 400,
+    y: 450,
+    tx: 400,
+    ty: 450,
+    face: 1,
+    walk: false,
+    wp: 0,
+    peckTimer: 0,
+    isPecking: false,
+    isFleeing: false, // Trạng thái đang hoảng sợ chạy/bay
+    fleeTimer: 0
+  };
+
   function updateChicken(dt) {
-    // Nếu đang mổ thóc
+    // 1. Kiểm tra khoảng cách với người chơi (me) và các phật tử khác
+    var scareDistance = 65; // Khoảng cách khiến gà giật mình (pixels)
+    var threat = null;
+
+    if (me.entered && Math.hypot(me.x - chicken.x, me.y - chicken.y) < scareDistance) {
+      threat = me;
+    } else {
+      others.forEach(function (o) {
+        if (Math.hypot(o.pr.x - chicken.x, o.pr.y - chicken.y) < scareDistance) {
+          threat = o.pr;
+        }
+      });
+    }
+
+    // Nếu phát hiện phật tử ở gần -> Gà hoảng hốt bay/chạy sang hướng ngược lại
+    if (threat && !chicken.isFleeing) {
+      chicken.isFleeing = true;
+      chicken.isPecking = false;
+      chicken.fleeTimer = 0.8; // Thời gian vỗ cánh hoảng sợ
+
+      // Tính hướng chạy ngược lại với phật tử
+      var angle = Math.atan2(chicken.y - threat.y, chicken.x - threat.x);
+      // Thêm chút ngẫu nhiên để gà chạy tự nhiên
+      angle += (Math.random() - 0.5) * 0.8;
+
+      var fleeDist = 120 + Math.random() * 100; // Bay/chạy xa 120-220px
+      chicken.tx = clamp(chicken.x + Math.cos(angle) * fleeDist, 80, 720);
+      chicken.ty = clamp(chicken.y + Math.sin(angle) * fleeDist, 280, 600);
+
+      // Tạo hiệu ứng tiếng kêu / dòng chữ nổi "Cục tác!"
+      if (typeof floaters !== 'undefined') {
+        floaters.push({ x: chicken.x, y: chicken.y - 25, t: performance.now(), txt: 'Cục tác!! 🐔' });
+      }
+    }
+
+    // 2. Đếm ngược thời gian hoảng sợ
+    if (chicken.isFleeing) {
+      chicken.fleeTimer -= dt;
+      if (chicken.fleeTimer <= 0 && Math.hypot(chicken.tx - chicken.x, chicken.ty - chicken.y) < 10) {
+        chicken.isFleeing = false;
+      }
+    }
+
+    // 3. Nếu đang mổ thóc (và không bị đe dọa)
     if (chicken.isPecking) {
       chicken.peckTimer -= dt;
-      if (chicken.peckTimer <= 0) {
-        chicken.isPecking = false;
-      }
+      if (chicken.peckTimer <= 0) chicken.isPecking = false;
       return;
     }
 
+    // 4. Di chuyển
     var dx = chicken.tx - chicken.x;
     var dy = chicken.ty - chicken.y;
     var d = Math.hypot(dx, dy);
-    var speed = 45; // tốc độ đi của gà
+    var speed = chicken.isFleeing ? 180 : 45; // Chạy nhanh gấp 4 lần khi hoảng sợ
 
-    // Đến điểm mục tiêu -> Chọn điểm mới hoặc đứng mổ thóc
     if (d < 5) {
       chicken.walk = false;
+      chicken.isFleeing = false;
       if (Math.random() < 0.4) {
         chicken.isPecking = true;
-        chicken.peckTimer = 1.2 + Math.random() * 1.5; // mổ thóc trong 1-2.5s
+        chicken.peckTimer = 1.2 + Math.random() * 1.5;
       } else {
-        // Chọn điểm ngẫu nhiên trên sàn chùa
         chicken.tx = clamp(200 + Math.random() * 400, 100, 700);
         chicken.ty = clamp(350 + Math.random() * 220, 300, 580);
       }
@@ -931,39 +992,47 @@ input::placeholder { color: var(--muted); }
       chicken.walk = true;
       chicken.x += (dx / d) * speed * dt;
       chicken.y += (dy / d) * speed * dt;
-      chicken.wp += dt * 15;
+      chicken.wp += dt * (chicken.isFleeing ? 30 : 15);
       if (Math.abs(dx) > 1) chicken.face = dx > 0 ? 1 : -1;
     }
   }
 
   function drawChicken(c) {
-    var s = sc(chicken.y) * 0.75; // Tỉ lệ kích thước theo chiều sâu (nhỏ xinh)
+    var s = sc(chicken.y) * 0.75;
     c.save();
     c.translate(chicken.x, chicken.y);
     c.scale(chicken.face * s, s);
 
-    // Bóng của con gà
+    // Bóng con gà (nhỏ hơn khi gà đập cánh bay lên)
+    var flyHeight = chicken.isFleeing ? Math.abs(Math.sin(chicken.wp * 0.5)) * 12 : 0;
     c.fillStyle = 'rgba(0,0,0,0.25)';
-    ell(c, 0, 2, 9, 4);
+    ell(c, 0, 2, Math.max(3, 9 - flyHeight * 0.3), Math.max(1.5, 4 - flyHeight * 0.15));
 
     var bob = chicken.walk ? Math.abs(Math.sin(chicken.wp)) * 2 : 0;
     var peckAngle = chicken.isPecking ? 0.6 : 0;
 
     c.save();
-    c.translate(0, -bob);
+    c.translate(0, -bob - flyHeight);
     c.rotate(peckAngle);
 
-    // Thần gà (Lông màu vàng óng)
+    // Thân gà (Lông màu vàng óng)
     c.fillStyle = '#fabb24';
     c.beginPath();
     c.ellipse(0, -8, 8, 6.5, 0, 0, PI2);
     c.fill();
 
-    // Cánh gà
+    // Cánh gà (Vỗ cánh tưng bừng khi đang hoảng sợ chạy trốn)
     c.fillStyle = '#e29e0d';
+    c.save();
+    c.translate(-2, -8);
+    if (chicken.isFleeing) {
+      var wingAngle = Math.sin(chicken.wp * 2) * 0.8 - 0.4;
+      c.rotate(wingAngle);
+    }
     c.beginPath();
-    c.ellipse(-2, -8, 5, 3.5, 0.2, 0, PI2);
+    c.ellipse(0, 0, 6, 4, 0.2, 0, PI2);
     c.fill();
+    c.restore();
 
     // Đuôi gà
     c.fillStyle = '#c77f0a';
@@ -980,18 +1049,18 @@ input::placeholder { color: var(--muted); }
     c.arc(5, -13, 4.5, 0, PI2);
     c.fill();
 
-    // Mào gà màu đỏ
+    // Mào gà
     c.fillStyle = '#e63946';
     c.beginPath();
     c.arc(5, -18, 2, 0, PI2);
     c.arc(3.5, -17, 1.5, 0, PI2);
     c.fill();
 
-    // Mỏ gà màu cam
+    // Mỏ gà (Há mỏ kêu khi giật mình)
     c.fillStyle = '#f77f00';
     c.beginPath();
     c.moveTo(8.5, -13);
-    c.lineTo(13, -11);
+    c.lineTo(13, chicken.isFleeing ? -13 : -11);
     c.lineTo(8.5, -9);
     c.closePath();
     c.fill();
@@ -1007,10 +1076,10 @@ input::placeholder { color: var(--muted); }
     // Chân gà
     c.strokeStyle = '#e29e0d';
     c.lineWidth = 1.2;
-    var legSw = chicken.walk ? Math.sin(chicken.wp) * 3 : 0;
+    var legSw = chicken.walk ? Math.sin(chicken.wp) * 4 : 0;
     c.beginPath();
-    c.moveTo(-2, -3); c.lineTo(-2 + legSw, 2);
-    c.moveTo(2, -3); c.lineTo(2 - legSw, 2);
+    c.moveTo(-2, -3); c.lineTo(-2 + legSw, 2 - flyHeight * 0.5);
+    c.moveTo(2, -3); c.lineTo(2 - legSw, 2 - flyHeight * 0.5);
     c.stroke();
 
     c.restore();
@@ -1140,15 +1209,27 @@ input::placeholder { color: var(--muted); }
 
   /* ---------- vòng lặp ---------- */
   var last = performance.now(), lastTagFs = 10;
-  function frame(tms) {
-    var dt = Math.min(0.05, (tms - last) / 1000); last = tms; nowMs = tms;
-    refreshRoster();
-    updateMe(dt, tms);
-    updateOthers(dt, tms);
-    updateChicken(dt);
-    render(tms, dt);
-    requestAnimationFrame(frame);
-  }
+function frame(tms) {
+  var dt = Math.min(0.05, (tms - last) / 1000); last = tms; nowMs = tms;
+  refreshRoster();
+  updateMe(dt, tms);
+  updateOthers(dt, tms);
+  updateChicken(dt); // <--- Gọi hàm cập nhật gà ở đây
+  render(tms, dt)
+  // Vẽ nhân vật và gà theo đúng chiều sâu (y)
+ var renderList = list.concat([{ isChicken: true, y: chicken.y }]);
+ renderList.sort(function (a, b) { return a.y - b.y; });
+
+ renderList.forEach(function (o) {
+   if (o.isChicken) {
+     drawChicken(ctx);
+   } else {
+     drawMonk(ctx, o);
+     drawTag(ctx, o, fs);
+   }
+ });;
+  requestAnimationFrame(frame);
+}
   function updateMe(dt, tms) {
     if (!me.entered || !admitted) return;
     if (me.a) {
@@ -1365,7 +1446,13 @@ input::placeholder { color: var(--muted); }
   cv.addEventListener('pointerdown', function (e) {
     if (!me.entered) return;
     var r = cv.getBoundingClientRect(), wx = (e.clientX - r.left) / r.width * W, wy = (e.clientY - r.top) / r.height * H;
-    var best = null, bd = 1e9;
+    // --- THÊM ĐOẠN NÀY: Click thẳng vào vị trí con gà để xua gà bay đi ---
+    if (Math.hypot(wx - chicken.x, wy - chicken.y) < 35) {
+      chicken.isFleeing = false; // reset để kích hoạt nhảy/bay ngay lập tức
+      walkTo(wx, wy); // Cho phật tử chạy lại vị trí gà
+      return;
+    }
+   var best = null, bd = 1e9;
     seats.forEach(function (s) { var rad = s.abbot ? 52 : 34, d = Math.hypot(s.x - wx, (s.y - 16 - wy) * 1.2); if (d < rad && d < bd) { bd = d; best = s.id; } });
     if (best != null) { goSeat(best); return; }
     if (Math.abs(wx - MO.x) < 32 && wy > MO.y - 46 && wy < MO.y + 8) { tapMo(); return; }
