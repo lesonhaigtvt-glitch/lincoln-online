@@ -1214,20 +1214,35 @@ function frame(tms) {
   refreshRoster();
   updateMe(dt, tms);
   updateOthers(dt, tms);
-  updateChicken(dt); // <--- Gọi hàm cập nhật gà ở đây
+if (typeof updateChicken === 'function') updateChicken(dt);
   render(tms, dt)
+  requestAnimationFrame(frame);
+  }
   // Vẽ nhân vật và gà theo đúng chiều sâu (y)
  var renderList = list.concat([{ isChicken: true, y: chicken.y }]);
  renderList.sort(function (a, b) { return a.y - b.y; });
+ list.sort(function (a, b) { return a.y - b.y; });
+     // Vẽ chú gà trước (hoặc dựa theo tọa độ y của gà so với các phật tử)
+    if (typeof drawChicken === 'function' && typeof chicken !== 'undefined') {
+      // Chèn gà vào mảng tạm để sắp xếp thứ tự trước/sau theo chiều sâu (y)
+      var drawList = list.concat([{ isChicken: true, y: chicken.y }]);
+      drawList.sort(function (a, b) { return a.y - b.y; });
+      drawList.forEach(function (o) {
+        if (o.isChicken) {
+          drawChicken(ctx);
+        } else {
+          drawMonk(ctx, o); drawTag(ctx, o, fs);
+        }
+      });
+    } else {
+      // Nếu chưa có gà thì chạy code gốc bình thường
+      list.forEach(function (o) { drawMonk(ctx, o); drawTag(ctx, o, fs); });
+    }
 
- renderList.forEach(function (o) {
-   if (o.isChicken) {
-     drawChicken(ctx);
-   } else {
-     drawMonk(ctx, o);
-     drawTag(ctx, o, fs);
-   }
- });;
+    list.forEach(function (o) {
+      var age = tms - o.chatAt;
+      if (o.chat && age < 9000) drawBubble(ctx, o, bfs, age > 7500 ? (9000 - age) / 1500 : 1);
+    });
   requestAnimationFrame(frame);
 }
   function updateMe(dt, tms) {
