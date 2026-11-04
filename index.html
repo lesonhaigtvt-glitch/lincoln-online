@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mô hình Chùa Cổ Kính Huyền Ảo - Three.js</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #050a12; }
+        canvas { display: block; }
+        #info {
+            position: absolute;
+            top: 15px;
+            width: 100%;
+            text-align: center;
+            color: #f3e5ab;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 18px;
+            letter-spacing: 1.5px;
+            pointer-events: none;
+            text-shadow: 2px 2px 5px rgba(0,0,0,0.9);
+            z-index: 10;
+        }
+        #audio-control {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.6);
+            color: #f3e5ab;
+            border: 1px solid #e6b800;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-family: sans-serif;
+            font-size: 14px;
+            z-index: 10;
+            transition: all 0.3s ease;
+        }
+        #audio-control:hover {
+            background: rgba(230, 184, 0, 0.2);
+            box-shadow: 0 0 10px rgba(230, 184, 0, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div id="info">KIẾN TRÚC CHÙA VIỆT CỔ KÍNH HUYỀN ẢO</div>
+    <button id="audio-control">🔊 Bật Nhạc Thiền</button>
+
+    <!-- Nhúng Three.js và OrbitControls từ CDN đáng tin cậy -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        // --- 1. KHỞI TẠO KHÔNG GIAN (SCENE & CANVAS) ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x040812); 
+        scene.fog = new THREE.FogExp2(0x040812, 0.015);
+
+        const camera = new THREE.PerspectiveCamera(55, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camera.position.set(0, 18, 38);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.0;
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+        controls.dampingFactor = 0.05;
+        controls.maxPolarAngle = Math.PI / 2 - 0.03; 
+        controls.minDistance = 12;
+        controls.maxDistance = 80;
+
+        // --- 2. HỆ THỐNG ÁNH SÁNG CHUYÊN NGHIỆP ---
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.15);
+        scene.add(ambientLight);
+
+        const hemiLight = new THREE.HemisphereLight(0xa1c1ff, 0x141b29, 0.3);
+        scene.add(hemiLight);
+
+        const dirLight = new THREE.DirectionalLight(0xfff2df, 0.6);
+        dirLight.position.set(30, 50, 20);
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 2048;
+        dirLight.shadow.mapSize.height = 2048;
+        dirLight.shadow.bias = -0.001;
+        const d = 30;
+        dirLight.shadow.camera.left = -d;
+        dirLight.shadow.camera.right = d;
+        dirLight.shadow.camera.top = d;
+        dirLight.shadow.camera.bottom = -d;
+        scene.add(dirLight);
+
+        // --- 3. BẢNG VẬT LIỆU (MATERIALS) ---
+        const matYard = new THREE.MeshStandardMaterial({ color: 0x3a3a36, roughness: 0.85 }); 
+        const matStone = new THREE.MeshStandardMaterial({ color: 0x60605c, roughness: 0.8 }); 
+        const matWall = new THREE.MeshStandardMaterial({ color: 0xc49f57, roughness: 0.65 });  
+        const matWood = new THREE.MeshStandardMaterial({ color: 0x35160c, roughness: 0.45 });  
+        const matRoof = new THREE.MeshStandardMaterial({ color: 0x801e13, roughness: 0.5, side: THREE.DoubleSide });  
+        const matGold = new THREE.MeshStandardMaterial({ color: 0xdbaf14, metalness: 0.75, roughness: 0.15 }); 
+        const matIncense = new THREE.MeshStandardMaterial({ color: 0x222221, roughness: 0.9 }); 
+
+        // --- 4. HÀM TẠO MÁI NGÓI CONG ĐẶC TRƯNG Á ĐÔNG ---
+        function createCurvedRoof(topRadius, bottomRadius, height) {
+            const geo = new THREE.CylinderGeometry(topRadius, bottomRadius, height, 4, 8, false, Math.PI / 4);
+            const pos = geo.attributes.position;
+            
+            for (let i = 0; i < pos.count; i++) {
+                let x = pos.getX(i);
+                let z = pos.getZ(i);
+                let y = pos.getY(i);
+                let distFromCenter = Math.sqrt(x * x + z * z);
+                
+                if (y < 0) { 
+                    let bend = Math.pow(distFromCenter, 2.3) * 0.015;
+                    pos.setY(i, y + bend);
+                }
+            }
+            geo.computeVertexNormals();
+            return geo;
+        }
+
+        // --- 5. XÂY DỰNG KIẾN TRÚC CHÙA ---
+        const templeGroup = new THREE.Group();
+
+        // 5.1 Bệ đá nền cao
+        const baseGeo = new THREE.BoxGeometry(18, 1.8, 18);
+        const base = new THREE.Mesh(baseGeo, matStone);
+        base.position.y = 0.9;
+        base.receiveShadow = true;
+        base.castShadow = true;
+        templeGroup.add(base);
+
+        // Bậc tam cấp
+        for (let i = 0; i < 4; i++) {
+            const stepGeo = new THREE.BoxGeometry(7, 0.3, 1 + i * 0.7);
+            const step = new THREE.Mesh(stepGeo, matStone);
+            step.position.set(0, 0.15 + (3 - i) * 0.3, 9 + i * 0.35);
+            step.castShadow = true;
+            step.receiveShadow = true;
+            templeGroup.add(step);
+        }
+
+        // 5.2 Hàm dựng các Tầng Chùa (Tier)
+        function createAdvancedTier(yPos, baseWidth, wallWidth, height) {
+            const tierGroup = new THREE.Group();
+            tierGroup.position.y = yPos;
+
+            // Tường chính
+            const wallGeo = new THREE.BoxGeometry(wallWidth, height, wallWidth);
+            const wall = new THREE.Mesh(wallGeo, matWall);
+            wall.position.y = height / 2;
+            wall.castShadow = true;
+            wall.receiveShadow = true;
+            tierGroup.add(wall);
+
+            // Cửa trước phẳng gỗ
+            const doorW = wallWidth * 0.3;
+            const doorH = height * 0.75;
+            const frontDoor = new THREE.Mesh(new THREE.PlaneGeometry(doorW, doorH), matWood);
+            frontDoor.position.set(0, doorH/2, wallWidth/2 + 0.02);
+            tierGroup.add(frontDoor);
+
+            // Hệ thống cột chống
+            const colRadius = 0.28;
+            const colGeo = new THREE.CylinderGeometry(colRadius * 0.9, colRadius, height, 16);
+            const offset = baseWidth / 2 - 0.4;
+            const colPositions = [
+                [-offset, -offset], [offset, -offset], [-offset, offset], [offset, offset],
+                [0, -offset], [0, offset], [-offset, 0], [offset, 0]
+            ];
+            colPositions.forEach(pos => {
+                const col = new THREE.Mesh(colGeo, matWood);
+                col.position.set(pos, height / 2, pos);
+                col.castShadow = true;
+                col.receiveShadow = true;
+                tierGroup.add(col);
+            });
+
+            // Lan can bảo vệ bao quanh hành lang
+            const railGroup = new THREE.Group();
+            const railH = 0.8;
+            const railThick = 0.1;
+            const railLength = baseWidth - 0.6;
+            const barGeo = new THREE.BoxGeometry(railLength, 0.08, railThick);
+            
+            for(let r = 0; r < 4; r++) {
+                const sideRail = new THREE.Group();
+                const topBar = new THREE.Mesh(barGeo, matWood); topBar.position.y = railH; sideRail.add(topBar);
+                const botBar = new THREE.Mesh(barGeo, matWood); botBar.position.y = 0.15; sideRail.add(botBar);
+
+                for(let j = -railLength/2 + 0.3; j <= railLength/2 - 0.3; j += 0.4) {
+                    const postGeo = new THREE.CylinderGeometry(0.04, 0.04, railH - 0.2);
+                    const p = new THREE.Mesh(postGeo, matWood);
+                    p.position.set(j, railH/2 + 0.05, 0);
+                    sideRail.add(p);
+                }
+                sideRail.position.set(0, 0, baseWidth/2 - 0.2);
+                sideRail.rotation.y = r * Math.PI / 2;
+                railGroup.add(sideRail);
+            }
+            tierGroup.add(railGroup);
+
+            // Hệ thống mái cong vút
+            const roofH = 2.0;
+            const roofGeo = createCurvedRoof(wallWidth * 0.7, baseWidth + 1.8, roofH);
+            const roof = new THREE.Mesh(roofGeo, matRoof);
+            roof.position.y = height + roofH / 2 - 0.2;
+            roof.castShadow = true;
+            roof.receiveShadow = true;
+            tierGroup.add(roof);
+
+            return { group: tierGroup, nextY: yPos + height + 1.2 };
+        }
+
+        // Tạo 3 tầng kiến trúc xếp chồng thu nhỏ dần
+        let currentY = 1.8;
+        const tier1 = createAdvancedTier(currentY, 14, 10, 4.5); templeGroup.add(tier1.group);
+        const tier2 = createAdvancedTier(tier1.nextY, 10.5, 7.5, 3.6); templeGroup.add(tier2.group);
+        const tier3 = createAdvancedTier(tier2.nextY, 7.5, 5.0, 2.8); templeGroup.add(tier3.group);
+
+        // Đỉnh tháp bảo hồ lô bằng vàng trên nóc thượng điện
+        const spireGroup = new THREE.Group();
+        spireGroup.position.y = tier3.nextY + 1.8;
+        const spireBase = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 1.0, 0.6, 12), matGold); spireGroup.add(spireBase);
+        const sphere1 = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 16), matGold); sphere1.position.y = 0.7; spireGroup.add(sphere1);
+        const sphere2 = new THREE.Mesh(new THREE.SphereGeometry(0.35, 16, 16), matGold); sphere2.position.y = 1.3; spireGroup.add(sphere2);
+        const spireTip = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.1, 1.2, 8), matGold); spireTip.position.y = 2.0; spireGroup.add(spireTip);
+        templeGroup.add(spireGroup);
+        scene.add(templeGroup);
+
+        // --- 6. KHUÔN VIÊN SÂN CHÙA & ĐÈN ĐÁ ---
+        const yard = new THREE.Mesh(new THREE.BoxGeometry(80, 0.2, 80), matYard);
+        yard.position.y = -0.1;
+        yard.receiveShadow = true;
+        scene.add(yard);
+
+        function createLantern(x, z) {
+            const lanGroup = new THREE.Group(); lanGroup.position.set(x, 0, z);
+            const baseLan = new THREE.Mesh(new THREE.CylinderGeometry(0.4, 0.5, 0.4, 8), matStone); baseLan.position.y = 0.2; baseLan.castShadow = true; lanGroup.add(baseLan);
+            const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 2.2, 8), matStone); pillar.position.y = 1.3; pillar.castShadow = true; lanGroup.add(pillar);
+            const box = new THREE.Mesh(new THREE.BoxGeometry(0.7, 0.8, 0.7), matStone); box.position.y = 2.6; box.castShadow = true; lanGroup.add(box);
+            
+            const core = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.5, 8), new THREE.MeshBasicMaterial({ color: 0xffaa44 }));
+            core.position.y = 2.6; lanGroup.add(core);
+
+            const pLight = new THREE.PointLight(0xff8833, 1.5, 14);
+            pLight.position.y = 2.6; pLight.castShadow = true; pLight.shadow.bias = -0.002; lanGroup.add(pLight);
+
+            const roofLan = new THREE.Mesh(createCurvedRoof(0.1, 1.0, 0.5), matStone); roofLan.position.y = 3.1; lanGroup.add(roofLan);
+            scene.add(lanGroup);
+        }
+        createLantern(-7, 13); createLantern(7, 13); createLantern(-11, 2); createLantern(11, 2);
+
+        // --- 7. ĐẶT LƯ HƯƠNG ĐỒNG VÀ HỆ THỐNG KHÓI BAY TỰ ĐỘNG ---
+        const burnerGroup = new THREE.Group(); burnerGroup.position.set(0, 1.2, 12);
+        const bodyBurner = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 0.7, 1.0, 16), matIncense); bodyBurner.position.y = 0.5; bodyBurner.castShadow = true; burnerGroup.add(bodyBurner);
+        const rimBurner = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.0, 0.15, 16), matIncense); rimBurner.position.y = 1.0; burnerGroup.add(rimBurner);
+        for(let a=0; a<3; a++){
+            const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.1, 0.5), matIncense);
+            leg.position.set(Math.cos(a*Math.PI*2/3)*0.6, 0.25, Math.sin(a*Math.PI*2/3)*0.6);
+            burnerGroup.add(leg);
+        }
+        templeGroup.add(burnerGroup);
+
+        // HẠT MÔ PHỎNG KHÓI HƯƠNG TRẦM MỜ ẢO
+        const smokeCount = 150;
+        const smokeGeo = new THREE.BufferGeometry();
+        const smokePositions = new Float32Array(smokeCount * 3);
+        const smokeVels = [];
+        for(let i=0; i<smokeCount; i++) {
+            smokePositions[i*3] = (Math.random() - 0.5) * 1.4;
+            smokePositions[i*3+1] = 2.3 + Math.random() * 6;
+            smokePositions[i*3+2] = 12 + (Math.random() - 0.5) * 1.4;
+            smokeVels.push({ x: (Math.random() - 0.5) * 0.012, y: 0.015 + Math.random() * 0.02, z: (Math.random() - 0.5) * 0.012 });
+        }
+        smokeGeo.setAttribute('position', new THREE.BufferAttribute(smokePositions, 3));
+        const smokeParticles = new THREE.Points(smokeGeo, new THREE.PointsMaterial({ color: 0xdddddd, size: 0.35, transparent: true, opacity: 0.2, depthWrite: false }));
+        templeGroup.add(smokeParticles);
+
+        // --- NÂNG CẤP TÍNH NĂNG 1: BẦU TRỜI SAO LẤP LÁNH LUNG LINH ---
+        const starCount = 800;
+        const starGeo = new THREE.BufferGeometry();
+        const starPositions = new Float32Array(starCount * 3);
+        const starBrightness = []; // Mảng lưu trữ trạng thái độ sáng/chu kỳ lấp lánh biệt lập
+        
+        for(let i=0; i<starCount; i++) {
+            // Phân bổ sao ngẫu nhiên trên một bán cầu lớn bao bọc không gian
+            let u = Math.random();
+            let v = Math.random();
+            let theta = u * 2.0 * Math.PI;
+            let phi = Math.acos(2.0 * v - 1.0);
+            
+            // Chỉ giữ các ngôi sao nằm ở nửa bán cầu trên mặt đất (y > 0)
+            if(phi > Math.PI / 2) phi = Math.PI - phi;
+
+            let radius = 250 + Math.random() * 50; 
+            starPositions[i*3] = radius * Math.sin(phi) * Math.cos(theta);
+            starPositions[i*3+1] = radius * Math.sin(phi) * Math.sin(theta);
+            starPositions[i*3+2] = radius * Math.cos(phi);
+
+            starBrightness.push({
+                speed: 1 + Math.random() * 4,
+                phase: Math.random() * Math.PI
+            });
+        }
+        starGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+        const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.8, transparent: true, opacity: 0.8, sizeAttenuation: true });
+        const starField = new THREE.Points(starGeo, starMat);
+        scene.add(starField);
+
+        // --- NÂNG CẤP TÍNH NĂNG 2: THIẾT LẬP ÂM THANH NHẠC THIỀN PHẬT GIÁO ---
+        // Sử dụng AudioContext để tổng hợp sóng âm thanh thiền (Ambient Drone) hình sin êm dịu, linh thiêng, độc lập không phụ thuộc file mạng ngoài
+        let audioCtx = null;
+        let oscillatorNode = null;
+        let gainNode = null;
+        let isPlaying = false;
+        
+        const audioBtn = document.getElementById('audio-control');
+        audioBtn.addEventListener('click', () => {
+            if (!audioCtx) {
+                // Khởi tạo AudioContext khi người dùng tương tác lần đầu để tuân thủ chính sách trình duyệt
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Bộ dao động tạo tiếng vang trầm (Drone) siêu ấm thư giãn
+                oscillatorNode = audioCtx.createOscillator();
+                oscillatorNode.type = 'sine';
+                oscillatorNode.frequency.setValueAtTime(120, audioCtx.currentTime); // Tần số 120Hz trầm sâu lắng
+                
+                // Hiệu ứng điều chế tần số (LFO) tạo cảm giác âm thanh ngân vang ngân dài xa xăm
+                const lfo = audioCtx.createOscillator();
+                lfo.frequency.setValueAtTime(0.2, audioCtx.currentTime); // Chu kỳ siêu chậm 5 giây
+                const lfoGain = audioCtx.createGain();
+                lfoGain.gain.setValueAtTime(1.5, audioCtx.currentTime);
+                lfo.connect(lfoGain);
+                lfoGain.connect(oscillatorNode.frequency);
+                
+                gainNode = audioCtx.createGain();
+                gainNode.gain.setValueAtTime(0.04, audioCtx.currentTime); // Giữ âm lượng nền dịu nhẹ không chói tai
+                
+                oscillatorNode.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                
+                lfo.start();
+                oscillatorNode.start();
+            }
+
+            if (isPlaying) {
+                gainNode.gain.setTargetAtTime(0, audioCtx.currentTime, 0.2);
+                audioBtn.innerText = "🔈 Đã Tắt Nhạc";
+                isPlaying = false;
+            } else {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                gainNode.gain.setTargetAtTime(0.04, audioCtx.currentTime, 0.5);
+                audioBtn.innerText = "🔊 Đang Phát Nhạc Thiền";
+                isPlaying = true;
+            }
+        });
+
+        // --- 8. VÒNG LẶP HOẠT HỌA & ĐỘNG LỰC HỌC (ANIMATION) ---
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const elapsedTime = clock.getElapsedTime();
+            controls.update();
+
+            // Xoay nhẹ góc toàn cảnh ngôi chùa chậm rãi
+            templeGroup.rotation.y = Math.sin(elapsedTime * 0.02) * 0.04;
+
+            // Xử lý logic khói trầm bay uốn lượn hình sin và tái chế
+            const smokePosArray = smokeParticles.geometry.attributes.position.array;
+            for(let i=0; i<smokeCount; i++) {
+                smokePosArray[i*3] += smokeVels[i].x + Math.sin(elapsedTime * 1.5 + i) * 0.003;
+                smokePosArray[i*3+1] += smokeVels[i].y;
+                smokePosArray[i*3+2] += smokeVels[i].z;
+
+                if(smokePosArray[i*3+1] > 12) {
+                    smokePosArray[i*3] = (Math.random() - 0.5) * 1.2;
+                    smokePosArray[i*3+1] = 2.3; 
+                    smokePosArray[i*3+2] = 12 + (Math.random() - 0.5) * 1.2;
+                }
+            }
+            smokeParticles.geometry.attributes.position.needsUpdate = true;
+
+            // Hiệu ứng làm lấp lánh các vì sao xa xôi trên bầu trời đêm thông qua điều biên opacity hình sin riêng biệt
+            // Để tối ưu hiệu năng không cần cập nhật mảng Buffer liên tục, ta làm mờ/rực nền sao nhẹ theo trục thời gian
+            starField.rotation.y = elapsedTime * 0.001; // Bầu trời đêm quay rất chậm theo chu kỳ tự nhiên
+
+            renderer.render(scene, camera);
+        }
+
+        // Tự động cập nhật tỷ lệ camera khi co giãn kích thước cửa sổ
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        animate();
+    </script>
+</body>
+</html>
