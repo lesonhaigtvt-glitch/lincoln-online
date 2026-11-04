@@ -888,7 +888,133 @@ input::placeholder { color: var(--muted); }
     sticks.push({ key: key, born: bornPerf, off: ((h % 100) / 100 - 0.5) * 22, lean: (((h >> 7) % 100) / 100 - 0.5) * 7 });
     if (sticks.length > 40) sticks.shift();
   }
+/* ---------- Con gà đi lòng vòng ---------- */
+  var chicken = {
+    x: 400,
+    y: 450,
+    tx: 400,
+    ty: 450,
+    face: 1,       // 1: sang phải, -1: sang trái
+    walk: false,
+    wp: 0,         // nhịp bước đi
+    peckTimer: 0,  // đếm ngược để mổ thóc
+    isPecking: false
+  };
 
+  function updateChicken(dt) {
+    // Nếu đang mổ thóc
+    if (chicken.isPecking) {
+      chicken.peckTimer -= dt;
+      if (chicken.peckTimer <= 0) {
+        chicken.isPecking = false;
+      }
+      return;
+    }
+
+    var dx = chicken.tx - chicken.x;
+    var dy = chicken.ty - chicken.y;
+    var d = Math.hypot(dx, dy);
+    var speed = 45; // tốc độ đi của gà
+
+    // Đến điểm mục tiêu -> Chọn điểm mới hoặc đứng mổ thóc
+    if (d < 5) {
+      chicken.walk = false;
+      if (Math.random() < 0.4) {
+        chicken.isPecking = true;
+        chicken.peckTimer = 1.2 + Math.random() * 1.5; // mổ thóc trong 1-2.5s
+      } else {
+        // Chọn điểm ngẫu nhiên trên sàn chùa
+        chicken.tx = clamp(200 + Math.random() * 400, 100, 700);
+        chicken.ty = clamp(350 + Math.random() * 220, 300, 580);
+      }
+    } else {
+      chicken.walk = true;
+      chicken.x += (dx / d) * speed * dt;
+      chicken.y += (dy / d) * speed * dt;
+      chicken.wp += dt * 15;
+      if (Math.abs(dx) > 1) chicken.face = dx > 0 ? 1 : -1;
+    }
+  }
+
+  function drawChicken(c) {
+    var s = sc(chicken.y) * 0.75; // Tỉ lệ kích thước theo chiều sâu (nhỏ xinh)
+    c.save();
+    c.translate(chicken.x, chicken.y);
+    c.scale(chicken.face * s, s);
+
+    // Bóng của con gà
+    c.fillStyle = 'rgba(0,0,0,0.25)';
+    ell(c, 0, 2, 9, 4);
+
+    var bob = chicken.walk ? Math.abs(Math.sin(chicken.wp)) * 2 : 0;
+    var peckAngle = chicken.isPecking ? 0.6 : 0;
+
+    c.save();
+    c.translate(0, -bob);
+    c.rotate(peckAngle);
+
+    // Thần gà (Lông màu vàng óng)
+    c.fillStyle = '#fabb24';
+    c.beginPath();
+    c.ellipse(0, -8, 8, 6.5, 0, 0, PI2);
+    c.fill();
+
+    // Cánh gà
+    c.fillStyle = '#e29e0d';
+    c.beginPath();
+    c.ellipse(-2, -8, 5, 3.5, 0.2, 0, PI2);
+    c.fill();
+
+    // Đuôi gà
+    c.fillStyle = '#c77f0a';
+    c.beginPath();
+    c.moveTo(-7, -9);
+    c.lineTo(-12, -14);
+    c.lineTo(-8, -6);
+    c.closePath();
+    c.fill();
+
+    // Đầu gà
+    c.fillStyle = '#fabb24';
+    c.beginPath();
+    c.arc(5, -13, 4.5, 0, PI2);
+    c.fill();
+
+    // Mào gà màu đỏ
+    c.fillStyle = '#e63946';
+    c.beginPath();
+    c.arc(5, -18, 2, 0, PI2);
+    c.arc(3.5, -17, 1.5, 0, PI2);
+    c.fill();
+
+    // Mỏ gà màu cam
+    c.fillStyle = '#f77f00';
+    c.beginPath();
+    c.moveTo(8.5, -13);
+    c.lineTo(13, -11);
+    c.lineTo(8.5, -9);
+    c.closePath();
+    c.fill();
+
+    // Mắt gà
+    c.fillStyle = '#111';
+    c.beginPath();
+    c.arc(6.5, -14, 0.9, 0, PI2);
+    c.fill();
+
+    c.restore();
+
+    // Chân gà
+    c.strokeStyle = '#e29e0d';
+    c.lineWidth = 1.2;
+    var legSw = chicken.walk ? Math.sin(chicken.wp) * 3 : 0;
+    c.beginPath();
+    c.moveTo(-2, -3); c.lineTo(-2 + legSw, 2);
+    c.moveTo(2, -3); c.lineTo(2 - legSw, 2);
+    c.stroke();
+
+    c.restore();
+  }
   /* ---------- công đức, gõ mõ, âm thanh hiệu ứng ---------- */
   var merit = { data: {}, db: false, ok: true, pending: 0, session: 0 };
   var floaters = [], ripples = [], tapDirty = false, lastTap = 0;
@@ -1019,6 +1145,7 @@ input::placeholder { color: var(--muted); }
     refreshRoster();
     updateMe(dt, tms);
     updateOthers(dt, tms);
+    updateChicken(dt);
     render(tms, dt);
     requestAnimationFrame(frame);
   }
@@ -1171,8 +1298,18 @@ input::placeholder { color: var(--muted); }
       var anim2 = me.a ? { type: me.a, u: Math.min(1, (tms - me.aStart) / me.aDur) } : null;
       list.push({ x: me.x, y: me.y, g: me.g, h: me.h, face: me.face, walk: me.walking && !anim2, wp: me.wp, pose: me.p, anim: anim2, name: me.name, chat: me.c, chatAt: me.chatAt, me: true, t: t, abbot: me.r === 'a', title: me.r === 'a' ? 'Trụ trì' : '', tapU: tms - me.tapAt < 260 ? (tms - me.tapAt) / 260 : 0 });
     }
-    list.sort(function (a, b) { return a.y - b.y; });
-    list.forEach(function (o) { drawMonk(ctx, o); drawTag(ctx, o, fs); });
+    // Thêm chú gà vào danh sách vẽ chung để xếp lớp theo chiều sâu (y)
+ var renderList = list.concat([{ isChicken: true, y: chicken.y }]);
+ renderList.sort(function (a, b) { return a.y - b.y; });
+
+ renderList.forEach(function (o) {
+   if (o.isChicken) {
+     drawChicken(ctx);
+   } else {
+     drawMonk(ctx, o);
+     drawTag(ctx, o, fs);
+   }
+ });
     list.forEach(function (o) {
       var age = tms - o.chatAt;
       if (o.chat && age < 9000) drawBubble(ctx, o, bfs, age > 7500 ? (9000 - age) / 1500 : 1);
