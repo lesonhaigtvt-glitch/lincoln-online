@@ -305,7 +305,14 @@ window.addEventListener('error',function(e){var b=document.getElementById('banne
 //     rồi dán cấu hình web app vào FIREBASE_CONFIG bên dưới. Ví dụ:
 //     const FIREBASE_CONFIG = { apiKey:"...", authDomain:"xxx.firebaseapp.com", projectId:"xxx", appId:"..." };
 //     Nếu để null: trang chạy ở chế độ 1 máy (dữ liệu lưu trong trình duyệt, không chia sẻ).
-const FIREBASE_CONFIG = null;
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyADh22bLit5qc4ATlr-oQAg3B1PgO1-2ag",
+  authDomain: "bargingswc.firebaseapp.com",
+  projectId: "bargingswc",
+  storageBucket: "bargingswc.firebasestorage.app",
+  messagingSenderId: "797251930221",
+  appId: "1:797251930221:web:94e7b91e95193bdd985764"
+};
 // (2) Mã PIN để mở quyền sửa Danh mục sà lan cho người quản lý. Để '' thì ai cũng sửa được.
 //     Lưu ý: đây chỉ là khoá giao diện, không phải bảo mật thật.
 const MANAGER_PIN = '';
