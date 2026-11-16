@@ -205,9 +205,8 @@ svg#map{width:100%;max-width:880px;height:auto;display:block;margin:0 auto;backg
       </div>
       <div class="row" style="margin-top:18px">
         <button class="btn primary" id="submitBtn">Cập nhật tình trạng</button>
-        <button class="btn" id="doneBtn">✓ Hoàn tất lượt (cảng đã nhận xong hàng)</button>
       </div>
-      <div class="sub" style="margin-top:8px">Khi tới giờ đến dự kiến mà chưa có cập nhật mới, hệ thống tự chuyển sang <b>Chờ dỡ</b> tại cảng đích (chuyến Ballast chuyển sang <b>Chờ xếp</b>).</div>
+      <div class="sub" style="margin-top:8px">Khi tới giờ đến dự kiến mà chưa có cập nhật mới, hệ thống tự chuyển sang <b>Chờ dỡ</b> tại cảng đích (chuyến Ballast chuyển sang <b>Chờ xếp</b>). Mỗi lần sà lan từ Đang xếp / Đang dỡ / Chờ xếp / Chờ dỡ chuyển sang <b>Đang di chuyển</b> được tính <b>1 lượt</b>.</div>
     </div>
   </section>
 
@@ -255,7 +254,7 @@ svg#map{width:100%;max-width:880px;height:auto;display:block;margin:0 auto;backg
     <div class="card">
       <h2>Chỉ số từng sà lan</h2>
       <div class="tablewrap"><table id="bargeTable"></table></div>
-      <div class="sub" style="margin-top:8px">1 lượt = 1 chuyến hoàn tất (cảng nhận xong hàng; chuyến Ballast tính khi tới nơi). 1 round = 1 lượt đi + 1 lượt về = 2 lượt. Tuần tính từ Thứ 2 đến Chủ nhật.</div>
+      <div class="sub" style="margin-top:8px">1 lượt = 1 lần sà lan rời cảng (từ Đang xếp / Đang dỡ / Chờ xếp / Chờ dỡ chuyển sang Đang di chuyển), tính theo loại hình Xuất / Nhập / Ballast lúc ở cảng. 1 round = 1 lượt đi + 1 lượt về = 2 lượt. Tuần tính từ Thứ 2 đến Chủ nhật.</div>
     </div>
   </section>
 
@@ -337,7 +336,9 @@ const PORT_REGION={};REGIONS.forEach(r=>r.ports.forEach(p=>PORT_REGION[p]=r.id))
 const RBY=Object.fromEntries(REGIONS.map(r=>[r.id,r]));
 const CARGO=['Xuất','Nhập','Ballast'];
 const CARGO_L={'Xuất':'X','Nhập':'N','Ballast':'B'};
-const STATUSES=['Đang di chuyển','Đang xếp','Đang dỡ','Chờ xếp','Chờ dỡ','Chờ giao'];
+const STATUSES=['Đang di chuyển','Đang xếp','Đang dỡ','Chờ xếp','Chờ dỡ'];
+const PORT_ST=['Đang xếp','Đang dỡ','Chờ xếp','Chờ dỡ'];
+const INLAND=['SWC','ICD','VICT'],SEA=['CM','SPITC','HP'];
 const ST_SHORT={'Đang di chuyển':'Chạy','Đang xếp':'Xếp','Đang dỡ':'Dỡ','Chờ xếp':'Chờ xếp','Chờ dỡ':'Chờ dỡ','Chờ giao':'Chờ giao','Chưa cập nhật':'—'};
 const ST_VAR={'Đang di chuyển':'--s1','Đang xếp':'--s3','Đang dỡ':'--s2','Chờ xếp':'--s7','Chờ dỡ':'--s8','Chờ giao':'--s4','Chưa cập nhật':'--muted'};
 const LOAD_ST=['Đang xếp','Chờ xếp'];
@@ -389,16 +390,9 @@ function cur(bid){
 }
 function eventsOf(bid){const out=[];for(const k in logs){const L=logs[k];if(L&&L.bid===bid&&Array.isArray(L.ev))out.push(...L.ev)}return out}
 // danh sách lượt hoàn thành: {c, ts}
-function legsOf(bid){
-  const now=Date.now();const m={};
-  for(const e of eventsOf(bid)){
-    if(!e||!e.legId)continue;
-    if(e.k==='done'){m[e.legId]={c:e.c,ts:e.ts,done:true};continue}
-    if(e.k==='dep'&&e.c==='Ballast'&&e.eta&&e.eta<=now){
-      const x=m[e.legId];
-      if(!x||(!x.done&&(e.at||0)>=(x.at||0))) m[e.legId]={c:'Ballast',ts:e.eta,at:e.at||0};
-    }
-  }
+function legsOf(bid){ // 1 lượt = 1 lần rời cảng (Đang xếp/Đang dỡ/Chờ xếp/Chờ dỡ → Đang di chuyển)
+  const m={};
+  for(const e of eventsOf(bid)){if(e&&e.k==='done'&&e.legId)m[e.legId]={c:e.c,ts:e.ts}}
   return Object.values(m);
 }
 function statsOf(bid,a,b){
@@ -467,8 +461,10 @@ function selectBarge(id){
   renderBargePick();renderForm();renderCurState();renderBargeMsgs();
   $('#bargePanel').hidden=false;
 }
-function portPicker(sel,key){
-  return REGIONS.map(r=>`<div class="portGroup"><div class="rg">${esc(r.name)}</div><div class="btns">${r.ports.map(p=>{const i=sel.indexOf(p);return `<button class="btn ${i>=0?'on':''}" data-k="${key}" data-p="${esc(p)}">${i>=0&&sel.length>1?`<sup>${i+1}</sup> `:''}${esc(p)}</button>`}).join('')}</div></div>`).join('');
+function groupsFor(kind){if(F.c==='Ballast')return PICK_ORDER;const load=F.c==='Xuất'?INLAND:SEA,unload=F.c==='Xuất'?SEA:INLAND;return kind==='load'?load:unload}
+const portsOf=g=>g.flatMap(id=>RBY[id].ports);
+function portPicker(sel,key,groups){
+  return groups.map(id=>RBY[id]).map(r=>`<div class="portGroup"><div class="rg">${esc(r.name)}</div><div class="btns">${r.ports.map(p=>{const i=sel.indexOf(p);return `<button class="btn ${i>=0?'on':''}" data-k="${key}" data-p="${esc(p)}">${i>=0&&sel.length>1?`<sup>${i+1}</sup> `:''}${esc(p)}</button>`}).join('')}</div></div>`).join('');
 }
 function renderForm(){
   if(!F.bid||!barges[F.bid]){$('#bargePanel').hidden=true;return}
@@ -476,17 +472,18 @@ function renderForm(){
   $('#cargoBtns').innerHTML=CARGO.map(c=>`<button class="btn ${c===F.c?'on':''}" data-c="${c}">${c}</button>`).join('');
   $('#statusBtns').innerHTML=STATUSES.map(s=>`<button class="btn ${s===F.s?'on':''}" data-s="${s}">${s}</button>`).join('');
   const mv=F.s==='Đang di chuyển';
+  const gL=groupsFor('load'),gU=groupsFor('unload'),gP=LOAD_ST.includes(F.s)?gL:gU;
+  const keep=(a,g)=>{const ok=portsOf(g);return a.filter(p=>ok.includes(p))};
+  F.fl=keep(F.fl,gL);F.tl=keep(F.tl,gU);F.pl=keep(F.pl,gP);
   $('#moveFields').hidden=!mv;$('#portFields').hidden=mv;
-  if(mv){$('#pickFrom').innerHTML=portPicker(F.fl,'fl');$('#pickTo').innerHTML=portPicker(F.tl,'tl')}
-  else{$('#portLabel').innerHTML=(LOAD_ST.includes(F.s)?'Cảng xếp':'Cảng dỡ')+' <span class="sub">— chọn được nhiều cảng</span>';$('#pickPort').innerHTML=portPicker(F.pl,'pl')}
-  const st=statuses[F.bid];
-  $('#doneBtn').disabled=!(st&&st.legOpen);
+  if(mv){$('#pickFrom').innerHTML=portPicker(F.fl,'fl',gL);$('#pickTo').innerHTML=portPicker(F.tl,'tl',gU)}
+  else{$('#portLabel').innerHTML=(LOAD_ST.includes(F.s)?'Cảng xếp':'Cảng dỡ')+' <span class="sub">— chọn được nhiều cảng</span>';$('#pickPort').innerHTML=portPicker(F.pl,'pl',gP)}
   $('#submitBtn').disabled=!canWrite;
 }
 $('#bargePanel').addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
   if(b.dataset.c){F.c=b.dataset.c;renderForm()}
-  else if(b.dataset.s){F.s=b.dataset.s;if(F.s!=='Đang di chuyển'&&!F.pl.length){const c=cur(F.bid);F.pl=[...(c.pl.length?c.pl:(F.tl.length?F.tl:F.fl))]}renderForm()}
+  else if(b.dataset.s){F.s=b.dataset.s;if(F.s==='Đang di chuyển'&&!F.fl.length){const c=cur(F.bid);F.fl=[...(c.pl.length?c.pl:F.pl)]}if(F.s!=='Đang di chuyển'&&!F.pl.length){const c=cur(F.bid);F.pl=[...(c.pl.length?c.pl:(F.tl.length?F.tl:F.fl))]}renderForm()}
   else if(b.dataset.k){const a=F[b.dataset.k];const p=b.dataset.p;const i=a.indexOf(p);if(i>=0)a.splice(i,1);else a.push(p);renderForm()}
 });
 function renderCurState(){
@@ -504,7 +501,7 @@ function renderCurState(){
 }
 function renderBargeMsgs(){
   if(!F.bid)return;
-  const ms=chat.filter(c=>(c.tags||[]).includes(F.bid)).slice(0,4);
+  const ms=chat.filter(c=>c.ts>=Date.now()-24*3600e3&&(c.tags||[]).includes(F.bid)).slice(0,4);
   $('#bargeMsgs').innerHTML=ms.length?`<h3>Chỉ thị từ điều độ</h3>`+ms.map(m=>`<div class="msg" style="margin-bottom:6px"><div class="meta"><span><b>${esc(nameOf(m.by,m))}</b> · ${fmt(m.ts)}</span>${m.note?`<span class="notechip">${esc(m.note)}</span>`:''}</div><div class="body">${fmtMsg(m.text)}</div></div>`).join(''):'';
 }
 
@@ -521,7 +518,8 @@ $('#submitBtn').onclick=async()=>{
     const correcting=prev&&prev.s==='Đang di chuyển'&&prev.eta&&now<prev.eta;
     if(correcting)legId=prev.legId;
     else{
-      if(prev&&prev.legOpen&&prev.legId)evs.push({k:'done',legId:prev.legId,c:prev.c,p:prev.p||prev.t||null,ts:Math.min(dep,now),auto:1});
+      const pc=cur(bid);
+      if(prev&&PORT_ST.includes(pc.s))evs.push({k:'done',legId:prev.legId||('P'+now.toString(36)),c:prev.c||F.c,p:pc.pl[0]||null,ts:dep,from:pc.s});
       legId='L'+now.toString(36)+Math.random().toString(36).slice(2,6);
     }
     const fl=[...F.fl],tl=[...F.tl];
@@ -530,99 +528,77 @@ $('#submitBtn').onclick=async()=>{
   }else{
     if(!F.pl.length)return toast('Chọn ít nhất 1 cảng');
     const T=combine($('#pD').value,$('#pT').value);if(isNaN(T))return toast('Nhập ngày giờ');
-    let legOpen=!!(prev&&prev.legOpen);const legId=prev?.legId||null;
-    if(LOAD_ST.includes(F.s)&&legOpen){evs.push({k:'done',legId,c:prev.c,p:prev.t||prev.p||null,ts:T,auto:1});legOpen=false}
+    const legOpen=false;const legId=prev?.legId||null;
     const pl=[...F.pl];
     evs.push({k:'st',s:F.s,c:F.c,p:pl[0],pl,ts:T,at:now});
     ns={s:F.s,c:F.c,p:pl[0],pl,f:prev?.f||null,t:prev?.t||null,fl:prev?.fl||[],tl:prev?.tl||[],dep:prev?.dep||null,eta:prev?.eta||null,time:T,legId,legOpen,upd:now,by};
   }
-  try{await saveState(bid,ns,evs);toast('Đã cập nhật '+bName(bid)+': '+F.s)}catch(e){}
-};
-$('#doneBtn').onclick=async()=>{
-  const bid=F.bid;const prev=statuses[bid];if(!prev||!prev.legOpen)return;
-  const now=Date.now();const mv=prev.s==='Đang di chuyển';
-  const pl=mv?arr(prev.tl,prev.t):arr(prev.pl,prev.p);
-  const evs=[{k:'done',legId:prev.legId,c:prev.c,p:pl[0]||null,ts:now}];
-  const ns={...prev,s:'Chờ xếp',p:pl[0]||null,pl,time:now,legOpen:false,upd:now,by:myId||'local'};
-  try{await saveState(bid,ns,evs);F.s='Chờ xếp';F.pl=[...pl];toast('Đã tính 1 lượt '+prev.c+' cho '+bName(bid))}catch(e){}
+  try{await saveState(bid,ns,evs);const d=evs.find(e=>e.k==='done');toast('Đã cập nhật '+bName(bid)+': '+F.s+(d?' · tính 1 lượt '+d.c:''))}catch(e){}
 };
 
 // ===================== BẢN ĐỒ =====================
-function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y)}
-function routePts(ra,rb){const A=RBY[ra],B=RBY[rb];const a={x:A.ex,y:A.cy},b={x:B.ex,y:B.cy};
-  if(ra===rb)return [a,{x:MAP.spine,y:a.y}];return [a,{x:MAP.spine,y:a.y},{x:MAP.spine,y:b.y},b]}
-function pointOn(pts,prog){
-  let L=0;const seg=[];for(let i=1;i<pts.length;i++){const d=dist(pts[i-1],pts[i]);seg.push(d);L+=d}
-  let want=L*prog;for(let i=0;i<seg.length;i++){if(want<=seg[i]||i===seg.length-1){const t=seg[i]?Math.min(1,want/seg[i]):0;return {x:pts[i].x+(pts[i+1].x-pts[i].x)*t,y:pts[i].y+(pts[i+1].y-pts[i].y)*t}}want-=seg[i]}
-  return pts[0];
+const PICK_ORDER=['SWC','ICD','VICT','CM','SPITC','HP'];
+const fmtEta=t=>{const d=new Date(t);return `${d.getHours()}h${d.getMinutes()?pad(d.getMinutes()):''} ${pad(d.getDate())}/${pad(d.getMonth()+1)}`};
+function chipInfo(b,c){
+  const st=c.s.charAt(0).toLowerCase()+c.s.slice(1);
+  const rest=' '+st+(c.moving?' · ETA '+fmtEta(c.eta):'');
+  return {b,c,name:String(b.name),rest,w:Math.round(12+(String(b.name).length*6.4)+rest.length*5.5)};
 }
-function pillSVG(b,c,x,y,note){
-  const col=`var(${ST_VAR[c.s]})`;const vendor=b.type==='Vendor';
-  const line2=note?note.slice(0,14):`${c.c?CARGO_L[c.c]+'·':''}${ST_SHORT[c.s]||''}`;
-  return `<g class="bg" data-bid="${esc(b.id)}" transform="translate(${x},${y})" style="cursor:pointer">
-    <rect x="-24" y="-12" width="48" height="24" rx="6" fill="var(--surface)" stroke="${col}" stroke-width="2" ${vendor?'stroke-dasharray="4 2.5"':''}/>
-    <rect x="-23" y="0.5" width="46" height="10.5" fill="${note?'var(--note)':col}" opacity="${note?1:.14}"/>
-    <text y="-2.5" text-anchor="middle" font-size="10" font-weight="700" fill="var(--text)">${esc(String(b.name).slice(0,7))}</text>
-    <text y="8.8" text-anchor="middle" font-size="7.8" font-weight="600" fill="${note?'var(--note-text)':'var(--text2)'}" ${line2.length>11?'textLength="43" lengthAdjust="spacingAndGlyphs"':''}>${esc(line2)}</text>
-  </g>`;
-}
-function chipSVG(b,c,x,y,note){
-  const col=`var(${ST_VAR[c.s]})`;const vendor=b.type==='Vendor';
-  const txt=String(b.name)+(note?' · '+note:'');const w=Math.round(10+txt.length*5.9);
-  return {w,svg:`<g class="bg" data-bid="${esc(b.id)}" transform="translate(${x},${y})" style="cursor:pointer">
-    <rect width="${w}" height="15" rx="4" fill="${note?'var(--note)':'var(--surface)'}" stroke="${col}" stroke-width="1.7" ${vendor?'stroke-dasharray="3 2"':''}/>
-    <text x="${w/2}" y="11" text-anchor="middle" font-size="9.6" font-weight="700" fill="${note?'var(--note-text)':'var(--text)'}">${esc(txt)}</text></g>`};
+function chipSVG(ch,x,y){
+  const col=`var(${ST_VAR[ch.c.s]})`;const vendor=ch.b.type==='Vendor';
+  return `<g class="bg" data-bid="${esc(ch.b.id)}" transform="translate(${x},${y})" style="cursor:pointer">
+    <rect width="${ch.w}" height="16" rx="4" fill="${ch.c.moving?'var(--accent-soft)':'var(--surface)'}" stroke="${col}" stroke-width="1.7" ${vendor?'stroke-dasharray="3 2"':''}/>
+    <text x="6" y="11.6" font-size="10" fill="var(--text)"><tspan font-weight="700">${esc(ch.name)}</tspan><tspan fill="var(--text2)">${esc(ch.rest)}</tspan></text></g>`;
 }
 let selRegion=null;
 function renderMap(){
   const svg=$('#map');if(!svg)return;
-  svg.setAttribute('viewBox',`0 0 ${MAP.W} ${MAP.H}`);
-  const list=bargeList();const notes=notesMap();
-  const moving=[],idle=[],none=[];
-  list.forEach(b=>{const c=cur(b.id);if(c.moving)moving.push({b,c});else if(c.pl.length)idle.push({b,c});else none.push(b)});
-  let h='';
-  // sông: trục giữa + nhánh tới từng cụm
-  const ys=REGIONS.map(r=>r.cy);const y1=Math.min(...ys),y2=Math.max(...ys);
-  h+=`<line x1="${MAP.spine}" y1="${y1-10}" x2="${MAP.spine}" y2="${y2+10}" stroke="var(--river)" stroke-width="26" stroke-linecap="round"/>`;
-  REGIONS.forEach(r=>h+=`<line x1="${r.ex}" y1="${r.cy}" x2="${MAP.spine}" y2="${r.cy}" stroke="var(--river)" stroke-width="16"/>`);
-  h+=`<line x1="${MAP.spine}" y1="${y1-10}" x2="${MAP.spine}" y2="${y2+10}" stroke="var(--river-line)" stroke-width="1.3" stroke-dasharray="5 5"/>`;
-  const my=(y1+y2)/2;
-  h+=`<text x="${MAP.spine+5}" y="${my}" transform="rotate(90 ${MAP.spine+5} ${my})" text-anchor="middle" font-size="10" font-style="italic" fill="var(--accent)" opacity=".7">Sông Sài Gòn · Đồng Nai · Nhà Bè · Lòng Tàu</text>`;
-  // cụm cảng
+  const list=bargeList();
+  const byPort={},none=[];
+  list.forEach(b=>{const c=cur(b.id);
+    if(c.moving){const p=c.tl[0];if(p&&PORT_REGION[p])(byPort[p]=byPort[p]||[]).push(chipInfo(b,c));else none.push(b)}
+    else if(c.pl.length)c.pl.forEach(p=>{if(PORT_REGION[p])(byPort[p]=byPort[p]||[]).push(chipInfo(b,c))});
+    else none.push(b)});
+  // bố cục: chỉ hiện cảng có sà lan
+  const LABW=78,LINE=20,maxW=MAP.boxW-LABW-10;let yL=14,yR=14;
   REGIONS.forEach(r=>{
-    const items=idle.filter(x=>x.c.region===r.id);const teu=items.reduce((s,i)=>s+(+i.b.teu||0),0);
-    const inbound=moving.filter(m=>PORT_REGION[m.c.tl[0]]===r.id).length;
+    r.rows=[];
+    r.ports.forEach(p=>{const items=(byPort[p]||[]).sort((a,b)=>(a.c.moving?1:0)-(b.c.moving?1:0));if(!items.length)return;
+      const lines=[[]];let x=0;
+      items.forEach(ch=>{if(x+ch.w>maxW&&lines[lines.length-1].length){lines.push([]);x=0}lines[lines.length-1].push({ch,x});x+=ch.w+5});
+      r.rows.push({p,lines})});
+    const n=r.rows.reduce((s,q)=>s+q.lines.length,0)||1;
+    r.h=MAP.head+n*LINE+6;
+    if(r.side==='L'){r.x0=14;r.y0=yL;yL+=r.h+MAP.gap}else{r.x0=MAP.W-14-MAP.boxW;r.y0=yR;yR+=r.h+MAP.gap}
+    r.cy=r.y0+Math.min(r.h/2,40);r.ex=r.side==='L'?r.x0+MAP.boxW:r.x0;
+  });
+  MAP.H=Math.max(yL,yR)-MAP.gap+14;
+  svg.setAttribute('viewBox',`0 0 ${MAP.W} ${MAP.H}`);
+  let h='';
+  const ys=REGIONS.map(r=>r.cy);const y1=Math.min(...ys),y2=Math.max(...ys);
+  h+=`<line x1="${MAP.spine}" y1="${y1-8}" x2="${MAP.spine}" y2="${y2+8}" stroke="var(--river)" stroke-width="24" stroke-linecap="round"/>`;
+  REGIONS.forEach(r=>h+=`<line x1="${r.ex}" y1="${r.cy}" x2="${MAP.spine}" y2="${r.cy}" stroke="var(--river)" stroke-width="14"/>`);
+  h+=`<line x1="${MAP.spine}" y1="${y1-8}" x2="${MAP.spine}" y2="${y2+8}" stroke="var(--river-line)" stroke-width="1.2" stroke-dasharray="5 5"/>`;
+  const my=(y1+y2)/2;
+  h+=`<text x="${MAP.spine+4}" y="${my}" transform="rotate(90 ${MAP.spine+4} ${my})" text-anchor="middle" font-size="10" font-style="italic" fill="var(--accent)" opacity=".7">Sông Sài Gòn · Đồng Nai · Nhà Bè · Lòng Tàu</text>`;
+  REGIONS.forEach(r=>{
+    const atPort=new Set(),inb=new Set();r.rows.forEach(q=>q.lines.flat().forEach(({ch})=>(ch.c.moving?inb:atPort).add(ch.b.id)));
+    const teu=[...atPort].reduce((s,id)=>s+(+barges[id]?.teu||0),0);
     const sel=selRegion===r.id;
     h+=`<g class="reg" data-r="${r.id}" style="cursor:pointer"><rect x="${r.x0}" y="${r.y0}" width="${MAP.boxW}" height="${r.h}" rx="10" fill="var(--surface)" stroke="${sel?'var(--accent)':'var(--line2)'}" stroke-width="${sel?2.2:1.1}"/>
       <text x="${r.x0+10}" y="${r.y0+18}" font-size="13" font-weight="700" fill="var(--text)">${esc(r.name)}</text>
-      <text x="${r.x0+MAP.boxW-10}" y="${r.y0+18}" font-size="10.5" text-anchor="end" fill="var(--text2)"><tspan font-weight="700" fill="var(--text)">${items.length}</tspan> SL${teu?` · ${teu} TEU`:''}${inbound?` · ↘${inbound} đang tới`:''}</text>
+      <text x="${r.x0+MAP.boxW-10}" y="${r.y0+18}" font-size="10.5" text-anchor="end" fill="var(--text2)"><tspan font-weight="700" fill="var(--text)">${atPort.size}</tspan> SL tại cảng${teu?` · ${teu} TEU`:''}${inb.size?` · ${inb.size} đang tới`:''}</text>
       <line x1="${r.x0+8}" x2="${r.x0+MAP.boxW-8}" y1="${r.y0+MAP.head-3}" y2="${r.y0+MAP.head-3}" stroke="var(--line)"/></g>`;
-    r.ports.forEach((p,i)=>{
-      const ry=r.y0+MAP.head+i*MAP.rowH;
-      h+=`<text x="${r.x0+10}" y="${ry+11}" font-size="10" font-weight="600" fill="var(--text2)">${esc(p)}</text>`;
-      const here=items.filter(x=>x.c.pl.includes(p));
-      let x=r.x0+80;const xmax=r.x0+MAP.boxW-8;
-      for(let k=0;k<here.length;k++){
-        const ch=chipSVG(here[k].b,here[k].c,x,ry,notes[here[k].b.id]?.note);
-        if(x+ch.w>xmax-(k<here.length-1?18:0)){h+=`<text x="${xmax}" y="${ry+11}" text-anchor="end" font-size="10" font-weight="700" fill="var(--accent)">+${here.length-k}</text>`;break}
-        h+=ch.svg;x+=ch.w+4;
-      }
-      if(!here.length)h+=`<text x="${r.x0+80}" y="${ry+11}" font-size="9.5" fill="var(--muted)">—</text>`;
+    let ry=r.y0+MAP.head;
+    if(!r.rows.length)h+=`<text x="${r.x0+10}" y="${ry+12}" font-size="10" fill="var(--muted)">Không có sà lan</text>`;
+    r.rows.forEach(q=>{
+      h+=`<text x="${r.x0+10}" y="${ry+12}" font-size="10.5" font-weight="700" fill="var(--text2)">${esc(q.p)}</text>`;
+      q.lines.forEach(line=>{line.forEach(({ch,x})=>h+=chipSVG(ch,r.x0+LABW+x,ry));ry+=LINE});
     });
-  });
-  // sà lan đang chạy
-  const placed=[];const offs=[[0,0],[52,0],[-52,0],[0,40],[52,40],[-52,40],[0,-40],[104,0],[-104,0]];
-  moving.forEach(({b,c})=>{
-    const ra=PORT_REGION[c.fl[0]],rb=PORT_REGION[c.tl[0]];if(!ra||!rb)return;
-    const base=pointOn(routePts(ra,rb),ra===rb?.5:c.prog);let p=base;
-    for(const [dx,dy] of offs){p={x:Math.max(30,Math.min(MAP.W-30,base.x+dx)),y:Math.max(16,Math.min(MAP.H-26,base.y+dy))};if(!placed.some(q=>Math.abs(q.x-p.x)<50&&Math.abs(q.y-p.y)<36))break}
-    placed.push(p);
-    h+=pillSVG(b,c,p.x,p.y,notes[b.id]?.note);
-    h+=`<text x="${p.x}" y="${p.y+21}" text-anchor="middle" font-size="8.5" font-weight="600" fill="var(--accent)">→ ${esc(c.tl[0])} ${Math.round(c.prog*100)}%</text>`;
   });
   svg.innerHTML=h;
   $('#mapLegend').innerHTML=STATUSES.map(s=>`<span><i style="border-color:var(${ST_VAR[s]})"></i>${s}</span>`).join('')+
-    `<span><i style="border-color:var(--text2);border-style:dashed"></i>Vendor</span><span><i style="background:var(--note);border-color:var(--note)"></i>Ghi chú điều độ</span>`+
+    `<span><i style="border-color:var(--text2);border-style:dashed"></i>Vendor</span><span><i style="background:var(--accent-soft);border-color:var(--s1)"></i>Đang trên đường tới cảng (kèm ETA)</span>`+
     (none.length?`<span style="flex-basis:100%">Chưa cập nhật: <b>${none.map(b=>esc(b.name)).join(', ')}</b></span>`:'');
   renderRegDetail();
 }
@@ -677,7 +653,7 @@ function renderDash(){
   ].map(k=>`<div class="kpi"><div class="l">${k[0]}</div><div class="v">${k[1]}</div><div class="d">${k[2]}</div></div>`).join('');
 
   // bảng khu vực
-  const sts=['Đang xếp','Đang dỡ','Chờ xếp','Chờ dỡ','Chờ giao'];
+  const sts=PORT_ST;
   let rt=`<tr><th>Khu vực</th><th class="n">Sà lan</th><th class="n">TEU</th>${sts.map(s=>`<th class="n">${s}</th>`).join('')}<th class="n">Đang tới</th></tr>`;
   REGIONS.forEach(r=>{const xs=atp.filter(x=>x.c.region===r.id);rt+=`<tr><td><b>${esc(r.name)}</b></td><td class="n">${xs.length}</td><td class="n">${teu(xs)||'—'}</td>${sts.map(s=>`<td class="n">${xs.filter(x=>x.c.s===s).length||''}</td>`).join('')}<td class="n">${mov.filter(m=>PORT_REGION[m.c.tl[0]]===r.id).length||''}</td></tr>`});
   rt+=`<tr><td><b>Trên sông</b></td><td class="n">${mov.length}</td><td class="n">${teu(mov)||'—'}</td><td colspan="${sts.length+1}"></td></tr>`;
@@ -792,9 +768,9 @@ async function resolveNames(){
 let lastChatCount=-1;
 function renderChat(){
   const el=$('#chatList');const atBottom=el.scrollHeight-el.scrollTop-el.clientHeight<40;
-  const ms=[...chat].sort((a,b)=>a.ts-b.ts).slice(-150);
+  const lim24=Date.now()-24*3600e3;const ms=[...chat].filter(m=>m.ts>=lim24).sort((a,b)=>a.ts-b.ts).slice(-150);
   el.innerHTML=ms.length?ms.map(m=>`<div class="msg ${m.by&&m.by===myId?'mine':''}"><div class="meta"><span><b>${esc(nameOf(m.by,m))}</b>${m.from?` · từ ${esc(bName(m.from))}`:''}</span><span>${fmt(m.ts)}</span></div>
-     <div class="body">${fmtMsg(m.text)}</div>${(m.tags||[]).length&&m.note?`<div style="margin-top:4px">${m.tags.map(t=>`<span class="notechip">${esc(bName(t))}: ${esc(m.note)}</span>`).join(' ')}</div>`:''}</div>`).join(''):'<div class="empty">Chưa có tin nhắn. Ví dụ: "@EXP ra CMIT trước 15h" → icon EXP trên bản đồ hiện "CMIT 15h".</div>';
+     <div class="body">${fmtMsg(m.text)}</div>${(m.tags||[]).length&&m.note?`<div style="margin-top:4px">${m.tags.map(t=>`<span class="notechip">${esc(bName(t))}: ${esc(m.note)}</span>`).join(' ')}</div>`:''}</div>`).join(''):'<div class="empty">Tin nhắn tự xoá sau 24 giờ. Chưa có tin nhắn. Ví dụ: "@EXP ra CMIT trước 15h" → icon EXP trên bản đồ hiện "CMIT 15h".</div>';
   if(atBottom||lastChatCount!==ms.length)el.scrollTop=el.scrollHeight;lastChatCount=ms.length;
 }
 const ta=$('#chatText');
@@ -848,7 +824,7 @@ function demoMode(msg){
   let saved=null;try{saved=JSON.parse(localStorage.getItem('salan.data')||'null')}catch(e){}
   if(saved&&saved.barges&&Object.keys(saved.barges).length){barges=saved.barges;statuses=saved.statuses||{};logs=saved.logs||{};chat=saved.chat||[]}
   else{DEMO.forEach((n,i)=>barges[n]={name:n,type:'Nội bộ',teu:null,order:i});persistLocal()}
-  myId=localId();
+  myId=localId();cleanup();
   $('#banner').innerHTML=`<div class="banner">${msg}</div>`;setSync('Chế độ 1 máy','warn');showName();renderAll();
 }
 function pinOk(){if(!MANAGER_PIN)return true;try{return localStorage.getItem('salan.pin')===MANAGER_PIN}catch(e){return false}}
@@ -867,7 +843,7 @@ function subscribe(){
   DB.collection('logs').where('wk','>=',minW).onSnapshot(s=>{const o={};s.docs.forEach(d=>o[d.id]=d.data());logs=o;ok(s);scheduleRender()},err);
   let firstChat=true;
   DB.collection('chat').orderBy('ts','desc').limit(300).onSnapshot(s=>{chat=s.docs.map(d=>({id:d.id,...d.data()})).filter(m=>m&&typeof m.text==='string');ok(s);scheduleRender();resolveNames();
-    if(firstChat&&!s.metadata.fromCache){firstChat=false;if(canAdmin)cleanup()}},err);
+    if(firstChat&&!s.metadata.fromCache){firstChat=false;cleanup()}},err);
 }
 async function init(){
   setView(location.hash.slice(1)||'barge');
@@ -892,14 +868,17 @@ async function init(){
   }
   demoMode('Chế độ 1 máy: dữ liệu chỉ lưu trong trình duyệt này. Để nhiều người dùng chung, điền FIREBASE_CONFIG trong file HTML (xem hướng dẫn ở đầu phần script).');
 }
-async function cleanup(){ // người quản lý: dọn chat > 30 ngày và nhật ký > 26 tuần
+async function cleanup(){ // xoá tin nhắn > 24h; người quản lý dọn thêm nhật ký > 26 tuần
+  if(!DB){const n=chat.length;chat=chat.filter(m=>m.ts>=Date.now()-24*3600e3);if(chat.length!==n)persistLocal();return}
+  if(!canWrite)return;
   try{
-    const c=await DB.collection('chat').where('ts','<',Date.now()-30*864e5).limit(100).get();
+    const c=await DB.collection('chat').where('ts','<',Date.now()-24*3600e3).limit(100).get();
     for(const d of c.docs)await DB.collection('chat').doc(d.id).delete();
-    const l=await DB.collection('logs').where('wk','<',wkKey(Date.now()-26*7*864e5)).limit(100).get();
-    for(const d of l.docs)await DB.collection('logs').doc(d.id).delete();
+    if(canAdmin){const l=await DB.collection('logs').where('wk','<',wkKey(Date.now()-26*7*864e5)).limit(100).get();
+      for(const d of l.docs)await DB.collection('logs').doc(d.id).delete();}
   }catch(e){}
 }
+setInterval(cleanup,30*60e3);
 window.__appOK=true;
 init();
 </script>
