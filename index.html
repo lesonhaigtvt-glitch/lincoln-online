@@ -297,7 +297,9 @@ svg#map{width:100%;max-width:880px;height:auto;display:block;margin:0 auto;backg
 <div id="toast"></div>
 
 <script>
-window.addEventListener('error',function(e){var b=document.getElementById('banner');if(b&&!b.dataset.err){b.dataset.err=1;b.innerHTML='<div class="banner" style="background:#fde2e2;color:#7a1010;border-color:#f3a5a5"><b>Lỗi trong file HTML:</b> '+String(e.message||'').replace(/</g,'&lt;')+(e.lineno?' (dòng '+e.lineno+')':'')+'<br>Thường do dán FIREBASE_CONFIG chưa đúng: thiếu dấu phẩy, thiếu dấu ngoặc, hoặc dán cả dòng import / const firebaseConfig.</div>';}var s=document.getElementById('syncTxt');if(s)s.textContent='Lỗi – xem thông báo';});
+window.__appErr=null;
+window.addEventListener('error',function(e){if(!window.__appErr)window.__appErr=(e.message||'')+(e.lineno?' (dòng '+e.lineno+')':'');});
+window.addEventListener('load',function(){setTimeout(function(){if(window.__appOK)return;var b=document.getElementById('banner');if(!b)return;b.innerHTML='<div class="banner" style="background:#fde2e2;color:#7a1010;border-color:#f3a5a5"><b>Ứng dụng không khởi động được:</b> '+String(window.__appErr||'không rõ').replace(/</g,'&lt;')+'<br>Thường do dán FIREBASE_CONFIG chưa đúng: thiếu dấu phẩy, thiếu dấu ngoặc, hoặc dán cả dòng import / const firebaseConfig.</div>';var s=document.getElementById('syncTxt');if(s)s.textContent='Lỗi – xem thông báo';},300);});
 </script>
 <script>
 // ===================== CẤU HÌNH KHI ĐƯA LÊN WEBSITE =====================
@@ -898,6 +900,7 @@ async function cleanup(){ // người quản lý: dọn chat > 30 ngày và nh�
     for(const d of l.docs)await DB.collection('logs').doc(d.id).delete();
   }catch(e){}
 }
+window.__appOK=true;
 init();
 </script>
 </body>
