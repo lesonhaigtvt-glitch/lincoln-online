@@ -183,30 +183,19 @@ svg#map{width:100%;max-width:880px;height:auto;display:block;margin:0 auto;backg
       <h3>Tình trạng</h3>
       <div class="btns" id="statusBtns"></div>
 
-      <div id="moveFields">
-        <h3>Cảng xếp (nơi đi) <span class="sub">— chọn được nhiều cảng</span></h3>
-        <div id="pickFrom"></div>
-        <h3>Cảng dỡ (nơi đến) <span class="sub">— chọn được nhiều cảng</span></h3>
-        <div id="pickTo"></div>
-        <div class="row" style="margin-top:12px">
-          <div class="field"><label>Ngày đi</label><input type="date" id="depD"></div>
-          <div class="field"><label>Giờ đi</label><input type="time" id="depT"></div>
-          <div class="field"><label>Ngày đến (dự kiến)</label><input type="date" id="etaD"></div>
-          <div class="field"><label>Giờ đến (dự kiến)</label><input type="time" id="etaT"></div>
-        </div>
-      </div>
       <div id="portFields">
-        <h3 id="portLabel">Tại cảng</h3>
+        <h3 id="portLabel">Cảng</h3>
         <div id="pickPort"></div>
         <div class="row" style="margin-top:12px">
           <div class="field"><label>Ngày</label><input type="date" id="pD"></div>
           <div class="field"><label>Giờ</label><input type="time" id="pT"></div>
         </div>
+        <div class="sub" style="margin-top:6px">Chọn <b>giờ hiện tại</b> nếu sà lan đã ở cảng. Chọn <b>giờ trong tương lai</b> nếu sà lan đang chạy tới cảng: hệ thống hiểu đó là ETA và tự chuyển sang tình trạng đã chọn khi tới giờ.</div>
       </div>
       <div class="row" style="margin-top:18px">
         <button class="btn primary" id="submitBtn">Cập nhật tình trạng</button>
       </div>
-      <div class="sub" style="margin-top:8px">Khi tới giờ đến dự kiến mà chưa có cập nhật mới, hệ thống tự chuyển sang <b>Chờ dỡ</b> tại cảng đích (chuyến Ballast chuyển sang <b>Chờ xếp</b>). Mỗi lần sà lan từ Đang xếp / Đang dỡ / Chờ xếp / Chờ dỡ chuyển sang <b>Đang di chuyển</b> được tính <b>1 lượt</b>.</div>
+      <div class="sub" style="margin-top:8px">Mỗi lần sà lan rời cảng đang ở để khai báo tình trạng tại <b>cảng khác</b> thì được tính <b>1 lượt</b> (theo loại hình lúc ở cảng cũ).</div>
     </div>
   </section>
 
@@ -220,7 +209,7 @@ svg#map{width:100%;max-width:880px;height:auto;display:block;margin:0 auto;backg
     </div>
     <div class="kpis" id="kpis"></div>
     <div class="card">
-      <h2>Bản đồ khu vực cảng <span class="sub">— bấm vào khu vực để xem chi tiết · rê chuột vào sà lan để xem thông tin</span></h2>
+      <h2>Bản đồ khu vực cảng <span class="sub">— bấm vào khu vực để xem chi tiết · rê chuột vào sà lan để xem thông tin</span><button class="btn small" id="copyMap" style="margin-left:auto">📋 Copy ảnh</button></h2>
       <div class="mapwrap"><svg id="map" viewBox="0 0 900 400" role="img" aria-label="Bản đồ khu vực cảng và vị trí sà lan"></svg></div>
       <div class="legend" id="mapLegend"></div>
       <div id="regDetail" class="regdetail"></div>
@@ -254,7 +243,7 @@ svg#map{width:100%;max-width:880px;height:auto;display:block;margin:0 auto;backg
     <div class="card">
       <h2>Chỉ số từng sà lan</h2>
       <div class="tablewrap"><table id="bargeTable"></table></div>
-      <div class="sub" style="margin-top:8px">1 lượt = 1 lần sà lan rời cảng (từ Đang xếp / Đang dỡ / Chờ xếp / Chờ dỡ chuyển sang Đang di chuyển), tính theo loại hình Xuất / Nhập / Ballast lúc ở cảng. 1 round = 1 lượt đi + 1 lượt về = 2 lượt. Tuần tính từ Thứ 2 đến Chủ nhật.</div>
+      <div class="sub" style="margin-top:8px">1 lượt = 1 lần sà lan rời cảng đang ở để khai báo tại cảng khác, tính theo loại hình Xuất / Nhập / Ballast lúc ở cảng cũ. 1 round = 1 lượt đi + 1 lượt về = 2 lượt. Tuần tính từ Thứ 2 đến Chủ nhật.</div>
     </div>
   </section>
 
@@ -336,7 +325,7 @@ const PORT_REGION={};REGIONS.forEach(r=>r.ports.forEach(p=>PORT_REGION[p]=r.id))
 const RBY=Object.fromEntries(REGIONS.map(r=>[r.id,r]));
 const CARGO=['Xuất','Nhập','Ballast'];
 const CARGO_L={'Xuất':'X','Nhập':'N','Ballast':'B'};
-const STATUSES=['Đang di chuyển','Đang xếp','Đang dỡ','Chờ xếp','Chờ dỡ'];
+const STATUSES=['Đang xếp','Đang dỡ','Chờ xếp','Chờ dỡ'];
 const PORT_ST=['Đang xếp','Đang dỡ','Chờ xếp','Chờ dỡ'];
 const INLAND=['SWC','ICD','VICT'],SEA=['CM','SPITC','HP'];
 const ST_SHORT={'Đang di chuyển':'Chạy','Đang xếp':'Xếp','Đang dỡ':'Dỡ','Chờ xếp':'Chờ xếp','Chờ dỡ':'Chờ dỡ','Chờ giao':'Chờ giao','Chưa cập nhật':'—'};
@@ -376,17 +365,16 @@ const bName=id=>barges[id]?.name||id;
 // trạng thái hiện tại (có suy luận tự động khi đến nơi)
 const arr=(a,x)=>Array.isArray(a)&&a.length?a:(x?[x]:[]);
 const pj=a=>(a||[]).join(', ');
+function norm(st){ // chuyển dữ liệu kiểu cũ (Đang di chuyển) sang kiểu mới
+  if(st&&st.s==='Đang di chuyển'){const tl=arr(st.tl,st.t);return {...st,s:st.c==='Ballast'?'Chờ xếp':'Chờ dỡ',pl:tl,p:tl[0],time:st.eta||st.time}}
+  return st;
+}
 function cur(bid){
-  const st=statuses[bid];const now=Date.now();
-  if(!st||!st.s) return {s:'Chưa cập nhật',region:null,pl:[],fl:[],tl:[]};
-  const fl=arr(st.fl,st.f),tl=arr(st.tl,st.t);
-  if(st.s==='Đang di chuyển'){
-    if(st.eta&&now>=st.eta) return {...st,fl,tl,s:st.c==='Ballast'?'Chờ xếp':'Chờ dỡ',p:tl[0],pl:tl,region:PORT_REGION[tl[0]]||null,auto:true,since:st.eta};
-    const prog=Math.max(0,Math.min(1,(now-st.dep)/((st.eta-st.dep)||1)));
-    return {...st,fl,tl,pl:[],moving:true,prog,region:null};
-  }
+  const st=norm(statuses[bid]);const now=Date.now();
+  if(!st||!st.s) return {s:'Chưa cập nhật',region:null,pl:[]};
   const pl=arr(st.pl,st.p);
-  return {...st,fl,tl,pl,p:pl[0],region:PORT_REGION[pl[0]]||null,since:st.time};
+  if(st.time>now&&!st.stay) return {...st,pl,p:pl[0],target:st.s,s:'Đang di chuyển',moving:true,eta:st.time,region:null};
+  return {...st,pl,p:pl[0],region:PORT_REGION[pl[0]]||null,since:st.time};
 }
 function eventsOf(bid){const out=[];for(const k in logs){const L=logs[k];if(L&&L.bid===bid&&Array.isArray(L.ev))out.push(...L.ev)}return out}
 // danh sách lượt hoàn thành: {c, ts}
@@ -432,7 +420,7 @@ async function saveState(bid,ns,evs){
 
 // ===================== PHẦN 1: SÀ LAN CẬP NHẬT =====================
 let typeF='Tất cả';
-let F={bid:null,c:'Xuất',s:'Đang di chuyển',fl:[],tl:[],pl:[]};
+let F={bid:null,c:'Xuất',s:'Đang xếp',pl:[]};
 try{F.bid=localStorage.getItem('salan.my')||null}catch(e){}
 
 function renderTypeFilter(){
@@ -449,14 +437,8 @@ $('#bargePick').onclick=e=>{const b=e.target.closest('button');if(!b)return;sele
 
 function selectBarge(id){
   F.bid=id;try{localStorage.setItem('salan.my',id)}catch(e){}
-  const st=statuses[id];const c=cur(id);
-  const now=new Date();
-  F.c=st?.c||'Xuất';
-  F.s=c.moving?'Đang di chuyển':(c.s!=='Chưa cập nhật'?c.s:'Đang di chuyển');
-  F.fl=[...c.fl];F.tl=[...c.tl];F.pl=[...c.pl];
-  if(c.moving){const d=new Date(st.dep),a=new Date(st.eta);$('#depD').value=ymd(d);$('#depT').value=hm(d);$('#etaD').value=ymd(a);$('#etaT').value=hm(a)}
-  else{const a=new Date(Date.now()+6*3600e3);$('#depD').value=ymd(now);$('#depT').value=hm(now);$('#etaD').value=ymd(a);$('#etaT').value=hm(a);
-    if(c.pl.length){F.fl=[...c.pl];F.tl=[]}}
+  const st=norm(statuses[id]);const c=cur(id);const now=new Date();
+  F.c=st?.c||'Xuất';F.s=st?.s||'Đang xếp';F.pl=[...c.pl];
   $('#pD').value=ymd(now);$('#pT').value=hm(now);
   renderBargePick();renderForm();renderCurState();renderBargeMsgs();
   $('#bargePanel').hidden=false;
@@ -471,26 +453,22 @@ function renderForm(){
   $('#panelTitle').innerHTML=`🚢 ${esc(bName(F.bid))} <span class="sub">${esc(barges[F.bid].type||'')}${barges[F.bid].teu?' · '+barges[F.bid].teu+' TEU':''}</span>`;
   $('#cargoBtns').innerHTML=CARGO.map(c=>`<button class="btn ${c===F.c?'on':''}" data-c="${c}">${c}</button>`).join('');
   $('#statusBtns').innerHTML=STATUSES.map(s=>`<button class="btn ${s===F.s?'on':''}" data-s="${s}">${s}</button>`).join('');
-  const mv=F.s==='Đang di chuyển';
-  const gL=groupsFor('load'),gU=groupsFor('unload'),gP=LOAD_ST.includes(F.s)?gL:gU;
-  const keep=(a,g)=>{const ok=portsOf(g);return a.filter(p=>ok.includes(p))};
-  F.fl=keep(F.fl,gL);F.tl=keep(F.tl,gU);F.pl=keep(F.pl,gP);
-  $('#moveFields').hidden=!mv;$('#portFields').hidden=mv;
-  if(mv){$('#pickFrom').innerHTML=portPicker(F.fl,'fl',gL);$('#pickTo').innerHTML=portPicker(F.tl,'tl',gU)}
-  else{$('#portLabel').innerHTML=(LOAD_ST.includes(F.s)?'Cảng xếp':'Cảng dỡ')+' <span class="sub">— chọn được nhiều cảng</span>';$('#pickPort').innerHTML=portPicker(F.pl,'pl',gP)}
+  const gP=groupsFor(LOAD_ST.includes(F.s)?'load':'unload');const ok=portsOf(gP);F.pl=F.pl.filter(p=>ok.includes(p));
+  $('#portLabel').innerHTML=(LOAD_ST.includes(F.s)?'Cảng xếp':'Cảng dỡ')+' <span class="sub">— chọn được nhiều cảng</span>';
+  $('#pickPort').innerHTML=portPicker(F.pl,'pl',gP);
   $('#submitBtn').disabled=!canWrite;
 }
 $('#bargePanel').addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
   if(b.dataset.c){F.c=b.dataset.c;renderForm()}
-  else if(b.dataset.s){F.s=b.dataset.s;if(F.s==='Đang di chuyển'&&!F.fl.length){const c=cur(F.bid);F.fl=[...(c.pl.length?c.pl:F.pl)]}if(F.s!=='Đang di chuyển'&&!F.pl.length){const c=cur(F.bid);F.pl=[...(c.pl.length?c.pl:(F.tl.length?F.tl:F.fl))]}renderForm()}
-  else if(b.dataset.k){const a=F[b.dataset.k];const p=b.dataset.p;const i=a.indexOf(p);if(i>=0)a.splice(i,1);else a.push(p);renderForm()}
+  else if(b.dataset.s){F.s=b.dataset.s;renderForm()}
+  else if(b.dataset.k){const a=F.pl;const p=b.dataset.p;const i=a.indexOf(p);if(i>=0)a.splice(i,1);else a.push(p);renderForm()}
 });
 function renderCurState(){
   if(!F.bid||!barges[F.bid])return;
   const c=cur(F.bid);
   let where='';
-  if(c.moving) where=`${esc(pj(c.fl))} → ${esc(pj(c.tl))} · đi ${fmt(c.dep)} · dự kiến đến ${fmt(c.eta)} · ${Math.round(c.prog*100)}% hành trình`;
+  if(c.moving) where=`Đang tới <b>${esc(pj(c.pl))}</b> · ETA ${fmt(c.eta)} · khi tới sẽ là <b>${esc(c.target)}</b>`;
   else if(c.pl.length) where=`tại <b>${esc(pj(c.pl))}</b> (${esc(RBY[c.region]?.name||'')}) · từ ${fmt(c.since)}`;
   $('#curState').innerHTML=`<div class="state">
     <div><div class="sub">Tình trạng hiện tại</div><div class="big" style="color:var(${ST_VAR[c.s]})">${esc(c.s)}</div></div>
@@ -507,41 +485,29 @@ function renderBargeMsgs(){
 
 $('#submitBtn').onclick=async()=>{
   const bid=F.bid;if(!bid)return;
-  const prev=statuses[bid];const now=Date.now();const evs=[];let ns;const by=myId||'local';
-  if(F.s==='Đang di chuyển'){
-    if(!F.fl.length||!F.tl.length)return toast('Chọn ít nhất 1 cảng xếp (nơi đi) và 1 cảng dỡ (nơi đến)');
-    if(F.fl.length===1&&F.tl.length===1&&F.fl[0]===F.tl[0])return toast('Cảng đi và cảng đến phải khác nhau');
-    const dep=combine($('#depD').value,$('#depT').value),eta=combine($('#etaD').value,$('#etaT').value);
-    if(isNaN(dep)||isNaN(eta))return toast('Nhập đủ ngày giờ đi và đến');
-    if(eta<=dep)return toast('Giờ đến phải sau giờ đi');
-    let legId;
-    const correcting=prev&&prev.s==='Đang di chuyển'&&prev.eta&&now<prev.eta;
-    if(correcting)legId=prev.legId;
-    else{
-      const pc=cur(bid);
-      if(prev&&PORT_ST.includes(pc.s))evs.push({k:'done',legId:prev.legId||('P'+now.toString(36)),c:prev.c||F.c,p:pc.pl[0]||null,ts:dep,from:pc.s});
-      legId='L'+now.toString(36)+Math.random().toString(36).slice(2,6);
-    }
-    const fl=[...F.fl],tl=[...F.tl];
-    evs.push({k:'dep',legId,c:F.c,f:fl[0],t:tl[0],fl,tl,dep,eta,ts:dep,at:now});
-    ns={s:F.s,c:F.c,f:fl[0],t:tl[0],fl,tl,p:null,pl:[],dep,eta,time:dep,legId,legOpen:true,upd:now,by};
-  }else{
-    if(!F.pl.length)return toast('Chọn ít nhất 1 cảng');
-    const T=combine($('#pD').value,$('#pT').value);if(isNaN(T))return toast('Nhập ngày giờ');
-    const legOpen=false;const legId=prev?.legId||null;
-    const pl=[...F.pl];
-    evs.push({k:'st',s:F.s,c:F.c,p:pl[0],pl,ts:T,at:now});
-    ns={s:F.s,c:F.c,p:pl[0],pl,f:prev?.f||null,t:prev?.t||null,fl:prev?.fl||[],tl:prev?.tl||[],dep:prev?.dep||null,eta:prev?.eta||null,time:T,legId,legOpen,upd:now,by};
+  if(!F.pl.length)return toast('Chọn ít nhất 1 cảng');
+  const T=combine($('#pD').value,$('#pT').value);if(isNaN(T))return toast('Nhập ngày giờ');
+  const prev=statuses[bid];const now=Date.now();const evs=[];const by=myId||'local';
+  const pc=prev?cur(bid):null;const pl=[...F.pl];
+  const same=pc&&!pc.moving&&pc.pl.length===pl.length&&pc.pl.every(p=>pl.includes(p));
+  let prevPl=prev?.prevPl||[];
+  // rời cảng cũ (đã tới nơi) sang cảng khác → tính 1 lượt
+  if(pc&&!pc.moving&&pc.s!=='Chưa cập nhật'&&!same){
+    evs.push({k:'done',legId:'P'+now.toString(36)+Math.random().toString(36).slice(2,5),c:pc.c||F.c,p:pc.pl[0]||null,ts:Math.min(now,T),from:pc.s});
+    prevPl=pc.pl;
   }
-  try{await saveState(bid,ns,evs);const d=evs.find(e=>e.k==='done');toast('Đã cập nhật '+bName(bid)+': '+F.s+(d?' · tính 1 lượt '+d.c:''))}catch(e){}
+  evs.push({k:'st',s:F.s,c:F.c,p:pl[0],pl,ts:T,at:now});
+  const ns={s:F.s,c:F.c,p:pl[0],pl,time:T,stay:!!same,prevPl,upd:now,by};
+  try{await saveState(bid,ns,evs);const d=evs.find(e=>e.k==='done');toast('Đã cập nhật '+bName(bid)+': '+F.s+(T>now&&!same?' · ETA '+fmt(T):'')+(d?' · tính 1 lượt '+d.c:''))}catch(e){}
 };
 
 // ===================== BẢN ĐỒ =====================
 const PICK_ORDER=['SWC','ICD','VICT','CM','SPITC','HP'];
+const fmtEtaD=t=>{const d=new Date(t);return `${d.getHours()}h${d.getMinutes()?pad(d.getMinutes()):''} ${pad(d.getDate())}`};
 const fmtEta=t=>{const d=new Date(t);return `${d.getHours()}h${d.getMinutes()?pad(d.getMinutes()):''} ${pad(d.getDate())}/${pad(d.getMonth()+1)}`};
 function chipInfo(b,c){
   const st=c.s.charAt(0).toLowerCase()+c.s.slice(1);
-  const rest=' '+st+(c.moving?' · ETA '+fmtEta(c.eta):'');
+  const rest=c.moving?' ETA '+fmtEtaD(c.eta):' '+st;
   return {b,c,name:String(b.name),rest,w:Math.round(12+(String(b.name).length*6.4)+rest.length*5.5)};
 }
 function chipSVG(ch,x,y){
@@ -556,12 +522,14 @@ function renderMap(){
   const list=bargeList();
   const byPort={},none=[];
   list.forEach(b=>{const c=cur(b.id);
-    if(c.moving){const p=c.tl[0];if(p&&PORT_REGION[p])(byPort[p]=byPort[p]||[]).push(chipInfo(b,c));else none.push(b)}
+    if(c.moving){const p=c.pl[0];if(p&&PORT_REGION[p])(byPort[p]=byPort[p]||[]).push(chipInfo(b,c));else none.push(b)}
     else if(c.pl.length)c.pl.forEach(p=>{if(PORT_REGION[p])(byPort[p]=byPort[p]||[]).push(chipInfo(b,c))});
     else none.push(b)});
   // bố cục: chỉ hiện cảng có sà lan
   const LABW=78,LINE=20,maxW=MAP.boxW-LABW-10;let yL=14,yR=14;
-  REGIONS.forEach(r=>{
+  REGIONS.forEach(r=>{r.rows=[];r.ports.forEach(p=>{if((byPort[p]||[]).length)r.rows.push(1)})});
+  const VIS=REGIONS.filter(r=>r.rows.length);
+  VIS.forEach(r=>{
     r.rows=[];
     r.ports.forEach(p=>{const items=(byPort[p]||[]).sort((a,b)=>(a.c.moving?1:0)-(b.c.moving?1:0));if(!items.length)return;
       const lines=[[]];let x=0;
@@ -572,16 +540,17 @@ function renderMap(){
     if(r.side==='L'){r.x0=14;r.y0=yL;yL+=r.h+MAP.gap}else{r.x0=MAP.W-14-MAP.boxW;r.y0=yR;yR+=r.h+MAP.gap}
     r.cy=r.y0+Math.min(r.h/2,40);r.ex=r.side==='L'?r.x0+MAP.boxW:r.x0;
   });
-  MAP.H=Math.max(yL,yR)-MAP.gap+14;
+  MAP.H=Math.max(yL,yR,60)-MAP.gap+14;
   svg.setAttribute('viewBox',`0 0 ${MAP.W} ${MAP.H}`);
   let h='';
-  const ys=REGIONS.map(r=>r.cy);const y1=Math.min(...ys),y2=Math.max(...ys);
+  if(!VIS.length){svg.setAttribute('viewBox','0 0 900 70');svg.innerHTML='<text x="450" y="40" text-anchor="middle" font-size="13" fill="var(--muted)">Chưa có sà lan nào khai báo cảng</text>';$('#mapLegend').innerHTML='';renderRegDetail();return}
+  const ys=VIS.map(r=>r.cy);const y1=Math.min(...ys),y2=Math.max(...ys);
   h+=`<line x1="${MAP.spine}" y1="${y1-8}" x2="${MAP.spine}" y2="${y2+8}" stroke="var(--river)" stroke-width="24" stroke-linecap="round"/>`;
-  REGIONS.forEach(r=>h+=`<line x1="${r.ex}" y1="${r.cy}" x2="${MAP.spine}" y2="${r.cy}" stroke="var(--river)" stroke-width="14"/>`);
+  VIS.forEach(r=>h+=`<line x1="${r.ex}" y1="${r.cy}" x2="${MAP.spine}" y2="${r.cy}" stroke="var(--river)" stroke-width="14"/>`);
   h+=`<line x1="${MAP.spine}" y1="${y1-8}" x2="${MAP.spine}" y2="${y2+8}" stroke="var(--river-line)" stroke-width="1.2" stroke-dasharray="5 5"/>`;
   const my=(y1+y2)/2;
-  h+=`<text x="${MAP.spine+4}" y="${my}" transform="rotate(90 ${MAP.spine+4} ${my})" text-anchor="middle" font-size="10" font-style="italic" fill="var(--accent)" opacity=".7">Sông Sài Gòn · Đồng Nai · Nhà Bè · Lòng Tàu</text>`;
-  REGIONS.forEach(r=>{
+  if(y2-y1>160)h+=`<text x="${MAP.spine+4}" y="${my}" transform="rotate(90 ${MAP.spine+4} ${my})" text-anchor="middle" font-size="10" font-style="italic" fill="var(--accent)" opacity=".7">Sông Sài Gòn · Đồng Nai · Nhà Bè · Lòng Tàu</text>`;
+  VIS.forEach(r=>{
     const atPort=new Set(),inb=new Set();r.rows.forEach(q=>q.lines.flat().forEach(({ch})=>(ch.c.moving?inb:atPort).add(ch.b.id)));
     const teu=[...atPort].reduce((s,id)=>s+(+barges[id]?.teu||0),0);
     const sel=selRegion===r.id;
@@ -598,18 +567,18 @@ function renderMap(){
   });
   svg.innerHTML=h;
   $('#mapLegend').innerHTML=STATUSES.map(s=>`<span><i style="border-color:var(${ST_VAR[s]})"></i>${s}</span>`).join('')+
-    `<span><i style="border-color:var(--text2);border-style:dashed"></i>Vendor</span><span><i style="background:var(--accent-soft);border-color:var(--s1)"></i>Đang trên đường tới cảng (kèm ETA)</span>`+
+    `<span><i style="border-color:var(--text2);border-style:dashed"></i>Vendor</span><span><i style="background:var(--accent-soft);border-color:var(--s1)"></i>Chưa tới cảng (ETA giờ ngày)</span>`+
     (none.length?`<span style="flex-basis:100%">Chưa cập nhật: <b>${none.map(b=>esc(b.name)).join(', ')}</b></span>`:'');
   renderRegDetail();
 }
 function renderRegDetail(){
   const el=$('#regDetail');if(!selRegion){el.innerHTML='';return}
   const r=RBY[selRegion];const list=bargeList().map(b=>({b,c:cur(b.id)}));
-  const inbound=list.filter(x=>x.c.moving&&PORT_REGION[x.c.tl[0]]===r.id);
+  const inbound=list.filter(x=>x.c.moving&&PORT_REGION[x.c.pl[0]]===r.id);
   el.innerHTML=`<h3 style="margin-top:14px">${esc(r.name)} – chi tiết</h3>`+r.ports.map(p=>{
     const xs=list.filter(x=>!x.c.moving&&x.c.pl.includes(p));
     return `<div class="port"><b>${esc(p)}</b> ${xs.length?xs.map(x=>`<span class="pill" style="color:var(${ST_VAR[x.c.s]});margin:2px">${esc(x.b.name)} · ${esc(x.c.s)}${x.c.c?' · '+esc(x.c.c):''} · ${fmt(x.c.since)}</span>`).join(''):'<span class="sub">—</span>'}</div>`}).join('')+
-    (inbound.length?`<div class="port"><b>Đang tới</b> ${inbound.map(x=>`<span class="pill" style="color:var(--s1);margin:2px">${esc(x.b.name)} → ${esc(pj(x.c.tl))} · ETA ${fmt(x.c.eta)}</span>`).join('')}</div>`:'');
+    (inbound.length?`<div class="port"><b>Đang tới</b> ${inbound.map(x=>`<span class="pill" style="color:var(--s1);margin:2px">${esc(x.b.name)} → ${esc(pj(x.c.pl))} · ETA ${fmt(x.c.eta)} · ${esc(x.c.target)}</span>`).join('')}</div>`:'');
 }
 $('#map').addEventListener('click',e=>{
   const g=e.target.closest('.bg');if(g)return;
@@ -622,11 +591,39 @@ $('#map').addEventListener('pointermove',e=>{
   const id=g.dataset.bid;const b=barges[id];const c=cur(id);const n=notesMap()[id];const ws=monday(Date.now()).getTime();const s=statsOf(id,ws,ws+7*864e5);
   tip.innerHTML=`<b>${esc(b?.name||id)}</b> <span class="sub">${esc(b?.type||'')}${b?.teu?' · '+b.teu+' TEU':''}</span><br>
    <span style="color:var(${ST_VAR[c.s]});font-weight:600">${esc(c.s)}</span>${c.c?' · '+esc(c.c):''}${c.auto?' <span class="auto">(tự động)</span>':''}<br>
-   ${c.moving?`${esc(pj(c.fl))} → ${esc(pj(c.tl))}<br>Đi ${fmt(c.dep)} · ETA ${fmt(c.eta)} · ${Math.round(c.prog*100)}%`:`${esc(pj(c.pl))} · từ ${fmt(c.since)}`}<br>
+   ${c.moving?`Đang tới ${esc(pj(c.pl))} · ETA ${fmt(c.eta)}<br>Khi tới: ${esc(c.target)}`:`${esc(pj(c.pl))} · từ ${fmt(c.since)}`}<br>
    Tuần này: ${s.legs} lượt · ${num(s.round)} round${n?`<br><span class="notechip">${esc(n.note)}</span> ${esc(n.text).slice(0,80)}`:''}`;
   tip.style.display='block';const x=Math.min(e.clientX+14,innerWidth-270);tip.style.left=x+'px';tip.style.top=(e.clientY+14)+'px';
 });
 $('#map').addEventListener('pointerleave',()=>tip.style.display='none');
+
+// ----- copy bản đồ dạng ảnh -----
+async function mapToPng(){
+  const svg=$('#map');const vb=svg.viewBox.baseVal;const W=vb.width,H=vb.height;
+  let src=new XMLSerializer().serializeToString(svg).replace(/var\((--[\w-]+)\)/g,(m,v)=>css(v)||'#000');
+  src=src.replace(/^<svg/,`<svg width="${W}" height="${H}" font-family="Be Vietnam Pro, Segoe UI, Arial, sans-serif"`);
+  const img=new Image();img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(src);await img.decode();
+  const S=2,top=36;const cv=document.createElement('canvas');cv.width=W*S;cv.height=(H+top)*S;const ctx=cv.getContext('2d');ctx.scale(S,S);
+  ctx.fillStyle=css('--surface');ctx.fillRect(0,0,W,H+top);ctx.fillStyle=css('--land');ctx.fillRect(0,top,W,H);
+  ctx.fillStyle=css('--text');ctx.font='bold 15px "Be Vietnam Pro", Arial, sans-serif';ctx.fillText('Tình trạng sà lan theo khu vực cảng',14,23);
+  const d=new Date();ctx.font='12px "Be Vietnam Pro", Arial, sans-serif';ctx.fillStyle=css('--text2');ctx.textAlign='right';ctx.fillText(`Cập nhật ${hm(d)} ${pad(d.getDate())}/${pad(d.getMonth()+1)}/${d.getFullYear()}`,W-14,23);
+  ctx.drawImage(img,0,top,W,H);
+  return new Promise((ok,no)=>cv.toBlob(b=>b?ok(b):no(new Error('blob')),'image/png'));
+}
+function showImg(blob){
+  const url=URL.createObjectURL(blob);const o=document.createElement('div');
+  o.style.cssText='position:fixed;inset:0;z-index:70;background:rgba(0,0,0,.6);display:grid;place-items:center;padding:16px';
+  o.innerHTML=`<div style="background:var(--surface);border-radius:12px;padding:14px;max-width:96vw;max-height:92vh;overflow:auto">
+    <div style="font-size:13px;margin-bottom:8px">Nhấn giữ ảnh (điện thoại) hoặc chuột phải → <b>Sao chép hình ảnh / Lưu ảnh</b> để gửi báo cáo.</div>
+    <img src="${url}" style="max-width:100%;display:block;border:1px solid var(--line);border-radius:8px">
+    <div class="row" style="margin-top:10px;justify-content:flex-end"><a class="btn small" href="${url}" download="tinh-trang-sa-lan.png">Tải ảnh</a><button class="btn small primary" id="imgClose">Đóng</button></div></div>`;
+  document.body.appendChild(o);o.onclick=e=>{if(e.target===o||e.target.id==='imgClose'){o.remove();URL.revokeObjectURL(url)}};
+}
+$('#copyMap').onclick=async()=>{
+  const p=mapToPng();
+  try{if(!navigator.clipboard||!window.ClipboardItem)throw 0;await navigator.clipboard.write([new ClipboardItem({'image/png':p})]);toast('Đã copy ảnh bản đồ – dán (Ctrl+V) vào Zalo / Email')}
+  catch(e){try{showImg(await p)}catch(e2){toast('Không tạo được ảnh')}}
+};
 
 // ===================== PHẦN 2: DASHBOARD =====================
 let wOff=0;const charts={};
@@ -645,7 +642,7 @@ function renderDash(){
   const nb=list.filter(x=>x.b.type==='Nội bộ').length;
   $('#kpis').innerHTML=[
     ['Tổng sà lan',list.length,`${nb} nội bộ · ${list.length-nb} vendor`],
-    ['Đang di chuyển',mov.length,teu(mov)?teu(mov)+' TEU trên sông':'trên đường sông'],
+    ['Đang di chuyển',mov.length,(teu(mov)?teu(mov)+' TEU · ':'')+'chưa tới cảng (theo ETA)'],
     ['Tại khu vực cảng',atp.length,teu(atp)?teu(atp)+' TEU tại cảng':'đang ở cảng'],
     ['Round tuần',num(tw/2),`${tw} lượt hoàn thành`],
     ['Lượt hàng tuần',tw-tb,`Xuất ${list.reduce((s,x)=>s+x.w.X,0)} · Nhập ${list.reduce((s,x)=>s+x.w.N,0)}`],
@@ -655,7 +652,7 @@ function renderDash(){
   // bảng khu vực
   const sts=PORT_ST;
   let rt=`<tr><th>Khu vực</th><th class="n">Sà lan</th><th class="n">TEU</th>${sts.map(s=>`<th class="n">${s}</th>`).join('')}<th class="n">Đang tới</th></tr>`;
-  REGIONS.forEach(r=>{const xs=atp.filter(x=>x.c.region===r.id);rt+=`<tr><td><b>${esc(r.name)}</b></td><td class="n">${xs.length}</td><td class="n">${teu(xs)||'—'}</td>${sts.map(s=>`<td class="n">${xs.filter(x=>x.c.s===s).length||''}</td>`).join('')}<td class="n">${mov.filter(m=>PORT_REGION[m.c.tl[0]]===r.id).length||''}</td></tr>`});
+  REGIONS.forEach(r=>{const xs=atp.filter(x=>x.c.region===r.id);rt+=`<tr><td><b>${esc(r.name)}</b></td><td class="n">${xs.length}</td><td class="n">${teu(xs)||'—'}</td>${sts.map(s=>`<td class="n">${xs.filter(x=>x.c.s===s).length||''}</td>`).join('')}<td class="n">${mov.filter(m=>PORT_REGION[m.c.pl[0]]===r.id).length||''}</td></tr>`});
   rt+=`<tr><td><b>Trên sông</b></td><td class="n">${mov.length}</td><td class="n">${teu(mov)||'—'}</td><td colspan="${sts.length+1}"></td></tr>`;
   $('#regTable').innerHTML=rt;
 
@@ -665,7 +662,7 @@ function renderDash(){
   list.forEach(x=>{const c=x.c;const stale=c.upd&&Date.now()-c.upd>12*3600e3;
     bt+=`<tr><td><b>${esc(x.b.name)}</b></td><td>${esc(x.b.type||'')}</td><td class="n">${x.b.teu||'—'}</td>
     <td><span class="pill" style="color:var(${ST_VAR[c.s]})"><span class="sw"></span>${esc(c.s)}</span>${c.auto?' <span class="auto">tự động</span>':''}</td>
-    <td>${c.moving?`${esc(pj(c.fl))} → ${esc(pj(c.tl))} · ${Math.round(c.prog*100)}% · ETA ${fmt(c.eta)}`:esc(pj(c.pl)||'—')}${c.c?` <span class="sub">(${esc(c.c)})</span>`:''}</td>
+    <td>${c.moving?`→ ${esc(pj(c.pl))} · ETA ${fmt(c.eta)} (${esc(c.target)})`:esc(pj(c.pl)||'—')}${c.c?` <span class="sub">(${esc(c.c)})</span>`:''}</td>
     <td class="n">${x.w.X||''}</td><td class="n">${x.w.N||''}</td><td class="n">${x.w.B||''}</td><td class="n">${x.w.legs}</td><td class="n"><b>${num(x.w.round)}</b></td><td class="n">${num(x.m.round)}</td>
     <td class="${stale?'stale':'sub'}">${c.upd?ago(c.upd):'—'}</td></tr>`});
   $('#bargeTable').innerHTML=list.length?bt:'<tr><td class="empty">Chưa có sà lan.</td></tr>';
@@ -683,7 +680,7 @@ function renderCharts(list,A,B){
   const bar={borderRadius:4,borderSkipped:'start',maxBarThickness:28,borderWidth:0};
 
   // trạng thái
-  const sl=[...STATUSES,'Chưa cập nhật'];
+  const sl=['Đang di chuyển',...STATUSES,'Chưa cập nhật'];
   up('chStatus',{type:'bar',data:{labels:sl,datasets:[{label:'Số sà lan',data:sl.map(s=>list.filter(x=>x.c.s===s).length),backgroundColor:sl.map(s=>css(ST_VAR[s])),...bar}]},
     options:base(false,{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,grid:{color:grid},ticks:{precision:0},border:{display:false}},y:{grid:{display:false}}}})});
   // round theo sà lan
