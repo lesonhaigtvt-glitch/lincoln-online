@@ -482,7 +482,7 @@ function selectBarge(id){
   renderBargePick();renderForm();renderCurState();renderBargeMsgs();
   $('#bargePanel').hidden=false;
 }
-function groupsFor(kind){if(F.c==='Ballast')return PICK_ORDER;const load=F.c==='Xuất'?INLAND:SEA,unload=F.c==='Xuất'?SEA:INLAND;return kind==='load'?load:unload}
+function groupsFor(kind){if(F.c==='Ballast')return PICK_ORDER;const SEAV=[...SEA,'VICT'];const load=F.c==='Xuất'?INLAND:SEAV,unload=F.c==='Xuất'?SEAV:INLAND;return kind==='load'?load:unload}
 const portsOf=g=>g.flatMap(id=>RBY[id].ports);
 function portPicker(sel,key,groups){
   return groups.map(id=>RBY[id]).map(r=>`<div class="portGroup"><div class="rg">${esc(r.name)}</div><div class="btns">${r.ports.map(p=>{const i=sel.indexOf(p);return `<button class="btn ${i>=0?'on':''}" data-k="${key}" data-p="${esc(p)}">${i>=0&&sel.length>1?`<sup>${i+1}</sup> `:''}${esc(p)}</button>`}).join('')}</div></div>`).join('');
@@ -537,7 +537,7 @@ function renderCurState(){
 }
 function renderBargeMsgs(){
   if(!F.bid)return;
-  const ms=chat.filter(c=>c.ts>=Date.now()-24*3600e3&&(c.tags||[]).includes(F.bid)).slice(0,4);
+  const ms=chat.filter(c=>c.ts>=Date.now()-24*3600e3&&(c.tags||[]).includes(F.bid)).sort((a,b)=>b.ts-a.ts).slice(0,1);
   $('#bargeMsgs').innerHTML=ms.length?`<h3>Chỉ thị từ điều độ</h3>`+ms.map(m=>`<div class="msg" style="margin-bottom:6px"><div class="meta"><span><b>${esc(nameOf(m.by,m))}</b> · ${fmt(m.ts)}</span>${m.note?`<span class="notechip">${esc(m.note)}</span>`:''}</div><div class="body">${fmtMsg(m.text)}</div></div>`).join(''):'';
 }
 $('#submitBtn').onclick=async()=>{
