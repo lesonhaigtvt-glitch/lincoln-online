@@ -88,6 +88,7 @@ aside.chat{border-left:1px solid var(--line);background:var(--surface);display:f
 .kpi .l{font-size:12px;color:var(--text2)}
 .kpi .v{font-size:26px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
 .kpi .d{font-size:12px;color:var(--muted)}
+.kpi .kl{margin-top:4px;display:grid;gap:1px}.kpi .kl div{display:flex;justify-content:space-between;gap:6px}.kpi .kl b{color:var(--text);font-variant-numeric:tabular-nums}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th{text-align:left;font-weight:600;color:var(--text2);font-size:12px;padding:7px 8px;border-bottom:1px solid var(--line2);white-space:nowrap}
 td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
@@ -105,6 +106,10 @@ svg#map{width:100%;max-width:880px;height:auto;display:block;margin:0 auto;backg
 #bargePanel .btn sup{font-size:9px;font-weight:700}
 #bargePanel .btn.primary{padding:9px 18px;font-size:14px}
 #bargePanel h3{margin:12px 0 6px}
+#fFrom h3,.c-load{color:#1b6b2f}#fTo h3,.c-unload{color:#a11d1d}
+#pickFrom .btn.on{background:#1b6b2f;border-color:#1b6b2f;color:#fff}
+#pickTo .btn.on{background:#a11d1d;border-color:#a11d1d;color:#fff}
+#pickFrom .btn:hover{border-color:#1b6b2f}#pickTo .btn:hover{border-color:#a11d1d}
 .legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--text2);margin-top:10px}
 .legend span{display:inline-flex;align-items:center;gap:5px}
 .legend i{width:12px;height:12px;border-radius:3px;border:2px solid;display:inline-block}
@@ -217,7 +222,7 @@ svg#map{width:100%;max-width:880px;height:auto;display:block;margin:0 auto;backg
         <div class="tablewrap"><table id="regTable"></table></div>
       </div>
       <div class="card">
-        <h2>Phân bổ tình trạng hiện tại <span class="sub">số sà lan</span></h2>
+        <h2>Phân bổ sà lan hiện tại theo khu vực <span class="sub" id="distSub"></span></h2>
         <div class="chartbox"><canvas id="chStatus"></canvas></div>
       </div>
     </div>
@@ -387,20 +392,33 @@ function eventsOf(bid){const out=[];for(const k in logs){const L=logs[k];if(L&&L
 // 1 lượt = kết thúc 1 hành trình (Di chuyển → tới cảng). Bỏ qua bước nào thì coi như đã làm xong bước đó.
 function legsOf(bid){
   const now=Date.now();const out=[];const all=eventsOf(bid);
-  all.forEach(e=>{if(e&&e.k==='done'&&e.legId&&!e.auto)out.push({c:e.c,ts:e.ts})}); // dữ liệu cũ
+  all.forEach(e=>{if(e&&e.k==='done'&&e.legId&&!e.auto)out.push({c:e.c,ts:e.ts,fl:[],tl:[]})}); // dữ liệu cũ
   const evs=all.filter(e=>e&&e.k==='st2').sort((a,b)=>a.ts-b.ts);
   let p=null;
   for(const e of evs){
     if(p){
       let pi=ST_IDX[p.s];
-      if(p.s==='Di chuyển'&&p.eta&&p.eta<=e.ts){out.push({c:p.c,ts:p.eta});pi=3}
+      if(p.s==='Di chuyển'&&p.eta&&p.eta<=e.ts){out.push({c:p.c,ts:p.eta,fl:p.fl||[],tl:p.tl||[]});pi=3}
       const ni=ST_IDX[e.s];const d=(ni-pi+5)%5;
-      if(d>0){let crossed=false;for(let k=1;k<=d;k++)if((pi+k)%5===3)crossed=true;if(crossed)out.push({c:pi<=2?p.c:e.c,ts:e.ts})}
+      if(d>0){let crossed=false;for(let k=1;k<=d;k++)if((pi+k)%5===3)crossed=true;if(crossed)out.push({c:pi<=2?p.c:e.c,ts:e.ts,fl:(e.fl&&e.fl.length?e.fl:p.fl)||[],tl:(e.tl&&e.tl.length?e.tl:p.tl)||[]})}
     }
     p=e;
   }
-  if(p&&p.s==='Di chuyển'&&p.eta&&p.eta<=now)out.push({c:p.c,ts:p.eta});
+  if(p&&p.s==='Di chuyển'&&p.eta&&p.eta<=now)out.push({c:p.c,ts:p.eta,fl:p.fl||[],tl:p.tl||[]});
   return out;
+}
+const ROUTES=[['CM-SWC','Cái Mép – SWC'],['CM-VICT','Cái Mép – VICT'],['ICD','ICDs']];
+const BROUTES=[['CM-SWC','Cái Mép – SWC'],['ICD-CM','ICDs – Cái Mép']];
+const MAIN_REG=[['SWC','SWC'],['ICD','ICDs'],['CM','Cái Mép'],['VICT','VICT']];
+function legRegs(l){return new Set([PORT_REGION[(l.fl||[])[0]],PORT_REGION[(l.tl||[])[0]]].filter(Boolean))}
+function routeKey(l){const r=legRegs(l);if(r.has('ICD'))return 'ICD';if(r.has('CM')&&r.has('SWC'))return 'CM-SWC';if(r.has('CM')&&r.has('VICT'))return 'CM-VICT';return null}
+function bRouteKey(l){const r=legRegs(l);if(r.has('CM')&&r.has('SWC'))return 'CM-SWC';if(r.has('ICD')&&r.has('CM'))return 'ICD-CM';return null}
+function routeStats(ids,a,b){ // chỉ sà lan nội bộ
+  const R={};ROUTES.forEach(([k])=>R[k]={goods:0,all:0});const B={};BROUTES.forEach(([k])=>B[k]=0);
+  ids.forEach(id=>legsOf(id).forEach(l=>{if(l.ts<a||l.ts>=b)return;const k=routeKey(l);
+    if(k){R[k].all++;if(l.c!=='Ballast')R[k].goods++}
+    if(l.c==='Ballast'){const bk=bRouteKey(l);if(bk)B[bk]++}}));
+  return {R,B};
 }
 function statsOf(bid,a,b){
   const r={X:0,N:0,B:0,legs:0};
@@ -494,7 +512,7 @@ function renderForm(){
   $('#lTo').innerHTML=(bl?'Cảng đến':'Cảng dỡ')+' <span class="sub">— chọn được nhiều cảng</span>';
   if(sp.from)$('#pickFrom').innerHTML=portPicker(F.fl,'fl',gL);
   if(sp.to)$('#pickTo').innerHTML=portPicker(F.tl,'tl',gU);
-  $('#fSum').innerHTML=sp.sum&&F.tl.length&&!sp.to?`<div class="state" style="padding:8px 12px;margin-top:10px"><span>${F.s==='Di chuyển'?`Hành trình: <b>${esc(pj(F.fl)||'?')}</b> → <b>${esc(pj(F.tl))}</b>`:`Cảng dỡ: <b>${esc(pj(F.tl))}</b>`}</span><button class="btn small" data-edit="1">Đổi cảng</button></div>`:'';
+  $('#fSum').innerHTML=sp.sum&&F.tl.length&&!sp.to?`<div class="state" style="padding:8px 12px;margin-top:10px"><span>${F.s==='Di chuyển'?`Hành trình: <b class="c-load">${esc(pj(F.fl)||'?')}</b> → <b class="c-unload">${esc(pj(F.tl))}</b>`:`Cảng dỡ: <b class="c-unload">${esc(pj(F.tl))}</b>`}</span><button class="btn small" data-edit="1">Đổi cảng</button></div>`:'';
   $('#submitBtn').disabled=!canWrite;
 }
 $('#bargePanel').addEventListener('click',e=>{
@@ -552,9 +570,9 @@ function chipInfo(b,c){
   return {b,c,name:String(b.name),rest,w:Math.round(12+(String(b.name).length*6.4)+rest.length*5.5)};
 }
 function chipSVG(ch,x,y){
-  const col=`var(${ST_VAR[ch.c.s]})`;const vendor=ch.b.type==='Vendor';
+  const vendor=ch.b.type==='Vendor';const col=vendor?'#8a8a86':`var(${ST_VAR[ch.c.s]})`;
   return `<g class="bg" data-bid="${esc(ch.b.id)}" transform="translate(${x},${y})" style="cursor:pointer">
-    <rect width="${ch.w}" height="16" rx="4" fill="${ch.c.moving?'var(--accent-soft)':'var(--surface)'}" stroke="${col}" stroke-width="1.7" ${vendor?'stroke-dasharray="3 2"':''}/>
+    <rect width="${ch.w}" height="16" rx="4" fill="${ch.c.moving?'var(--accent-soft)':'var(--surface)'}" stroke="${col}" stroke-width="1.7"/>
     <text x="6" y="11.6" font-size="10" fill="var(--text)"><tspan font-weight="700">${esc(ch.name)}</tspan><tspan fill="var(--text2)">${esc(ch.rest)}</tspan></text></g>`;
 }
 let selRegion=null;
@@ -608,7 +626,7 @@ function renderMap(){
   });
   svg.innerHTML=h;
   $('#mapLegend').innerHTML=STATUSES.map(s=>`<span><i style="border-color:var(${ST_VAR[s]})"></i>${s}</span>`).join('')+
-    `<span><i style="border-color:var(--text2);border-style:dashed"></i>Vendor</span><span><i style="background:var(--accent-soft);border-color:var(--s1)"></i>Chưa tới cảng (ETA giờ ngày)</span>`+
+    `<span><i style="border-color:#8a8a86"></i>Vendor (viền xám)</span><span><i style="background:var(--accent-soft);border-color:var(--s1)"></i>Chưa tới cảng (ETA giờ ngày)</span>`+
     (none.length?`<span style="flex-basis:100%">Chưa cập nhật: <b>${none.map(b=>esc(b.name)).join(', ')}</b></span>`:'');
   renderRegDetail();
 }
@@ -681,13 +699,19 @@ function renderDash(){
   const teu=a=>a.reduce((s,x)=>s+(+x.b.teu||0),0);
   const tw=list.reduce((s,x)=>s+x.w.legs,0),tb=list.reduce((s,x)=>s+x.w.B,0);
   const nb=list.filter(x=>x.b.type==='Nội bộ').length;
+  const intIds=list.filter(x=>x.b.type!=='Vendor').map(x=>x.b.id);
+  const RS=routeStats(intIds,A,B);
+  const mainAt=MAIN_REG.map(([id,n])=>[n,atp.filter(x=>x.c.region===id)]);
+  const mainN=mainAt.reduce((s,[,a])=>s+a.length,0),mainT=mainAt.reduce((s,[,a])=>s+teu(a),0);
+  const lines=rows=>`<div class="kl">${rows.map(([n,v])=>`<div><span>${n}</span><b>${v}</b></div>`).join('')}</div>`;
+  const rTot=ROUTES.reduce((s,[k])=>s+RS.R[k].all,0)/2,gTot=ROUTES.reduce((s,[k])=>s+RS.R[k].goods,0),bTot=BROUTES.reduce((s,[k])=>s+RS.B[k],0);
   $('#kpis').innerHTML=[
     ['Tổng sà lan',list.length,`${nb} nội bộ · ${list.length-nb} vendor`],
-    ['Di chuyển',mov.length,(teu(mov)?teu(mov)+' TEU · ':'')+'chưa tới cảng (theo ETA)'],
-    ['Tại khu vực cảng',atp.length,teu(atp)?teu(atp)+' TEU tại cảng':'đang ở cảng'],
-    ['Round tuần',num(tw/2),`${tw} lượt hoàn thành`],
-    ['Lượt hàng tuần',tw-tb,`Xuất ${list.reduce((s,x)=>s+x.w.X,0)} · Nhập ${list.reduce((s,x)=>s+x.w.N,0)}`],
-    ['Lượt ballast tuần',tb,tw?Math.round(tb/tw*100)+'% số lượt':'—'],
+    ['Di chuyển',mov.length,(teu(mov)?teu(mov)+' TEU · ':'')+'đang hành trình'],
+    ['Tại khu vực cảng',mainN,(mainT?mainT+' TEU':'SWC · ICDs · Cái Mép · VICT')+lines(mainAt.map(([n,a])=>[n,a.length]))],
+    ['Round tuần <span class="sub">nội bộ</span>',num(rTot),lines(ROUTES.map(([k,n])=>[n,num(RS.R[k].all/2)]))],
+    ['Lượt hàng tuần <span class="sub">nội bộ</span>',gTot,lines(ROUTES.map(([k,n])=>[n,RS.R[k].goods]))],
+    ['Ballast tuần <span class="sub">nội bộ</span>',bTot,lines(BROUTES.map(([k,n])=>[n,RS.B[k]]))],
   ].map(k=>`<div class="kpi"><div class="l">${k[0]}</div><div class="v">${k[1]}</div><div class="d">${k[2]}</div></div>`).join('');
 
   // bảng khu vực
@@ -720,10 +744,15 @@ function renderCharts(list,A,B){
   const up=(id,cfg)=>{if(charts[id]){charts[id].data=cfg.data;charts[id].options=cfg.options;charts[id].update()}else charts[id]=new Chart($('#'+id),cfg)};
   const bar={borderRadius:4,borderSkipped:'start',maxBarThickness:28,borderWidth:0};
 
-  // trạng thái
-  const sl=[...STATUSES,'Chưa cập nhật'];
-  up('chStatus',{type:'bar',data:{labels:sl,datasets:[{label:'Số sà lan',data:sl.map(s=>list.filter(x=>x.c.s===s).length),backgroundColor:sl.map(s=>css(ST_VAR[s])),...bar}]},
-    options:base(false,{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{beginAtZero:true,grid:{color:grid},ticks:{precision:0},border:{display:false}},y:{grid:{display:false}}}})});
+  // phân bổ theo khu vực chính (TEU + %)
+  const areas=[['SWC',x=>x.c.region==='SWC'],['ICDs',x=>x.c.region==='ICD'],['Cái Mép',x=>x.c.region==='CM'],['Hành trình',x=>x.c.moving],['VICT',x=>x.c.region==='VICT']];
+  const teu=a=>a.reduce((s,x)=>s+(+x.b.teu||0),0);
+  const aT=areas.map(([n,f])=>teu(list.filter(f))),aN=areas.map(([n,f])=>list.filter(f).length);
+  const useT=aT.some(v=>v>0);const vals=useT?aT:aN;const tot=vals.reduce((s,v)=>s+v,0)||1;
+  $('#distSub').textContent=useT?`tổng ${aT.reduce((s,v)=>s+v,0)} TEU`:'chưa nhập TEU ở Danh mục – đang tính theo số sà lan';
+  const AC=[css('--s1'),css('--s6'),css('--s2'),css('--s4'),css('--s7')];
+  up('chStatus',{type:'bar',data:{labels:areas.map(([n],i)=>`${n}  ${useT?aT[i]+' TEU':aN[i]+' SL'} · ${Math.round(vals[i]/tot*100)}%`),datasets:[{label:useT?'TEU':'Số sà lan',data:vals,backgroundColor:areas.map(([n])=>n==='Hành trình'?css('--s1'):n==='SWC'?css('--s3'):n==='ICDs'?css('--s7'):n==='Cái Mép'?css('--s2'):css('--s5')),...bar}]},
+    options:base(false,{indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>` ${useT?aT[c.dataIndex]+' TEU · ':''}${aN[c.dataIndex]} sà lan · ${Math.round(vals[c.dataIndex]/tot*100)}%`}}},scales:{x:{beginAtZero:true,grid:{color:grid},ticks:{precision:0},border:{display:false}},y:{grid:{display:false},ticks:{font:{weight:'600'}}}}})});
   // round theo sà lan
   up('chRound',{type:'bar',data:{labels:list.map(x=>x.b.name),datasets:[
     {label:'Nội bộ',data:list.map(x=>x.b.type==='Nội bộ'?x.w.round:null),backgroundColor:S1,...bar},
