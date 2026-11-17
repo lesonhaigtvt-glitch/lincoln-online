@@ -569,11 +569,18 @@ function chipInfo(b,c){
   const rest=c.moving?' ETA '+fmtEtaD(c.eta):' '+st;
   return {b,c,name:String(b.name),rest,w:Math.round(12+(String(b.name).length*6.4)+rest.length*5.5)};
 }
+const CHIP={ // nền, viền, chữ tên, chữ phụ
+  'Chờ xếp':['#EAF3DE','#639922','#27500A','#3B6D11'],
+  'Đang xếp':['#3B6D11','#3B6D11','#FFFFFF','#EAF3DE'],
+  'Di chuyển':['#E6F1FB','#378ADD','#0C447C','#185FA5'],
+  'Chờ dỡ':['#FCEBEB','#E24B4A','#791F1F','#A32D2D'],
+  'Đang dỡ':['#A32D2D','#A32D2D','#FFFFFF','#FCEBEB'],
+  'Chưa cập nhật':['#F1EFE8','#888780','#444441','#5F5E5A']};
 function chipSVG(ch,x,y){
-  const col=`var(${ST_VAR[ch.c.s]})`;
+  const [bg,bd,t1,t2]=CHIP[ch.c.s]||CHIP['Chưa cập nhật'];
   return `<g class="bg" data-bid="${esc(ch.b.id)}" transform="translate(${x},${y})" style="cursor:pointer">
-    <rect width="${ch.w}" height="16" rx="4" fill="${ch.c.moving?'var(--accent-soft)':'var(--surface)'}" stroke="${col}" stroke-width="1.7"/>
-    <text x="6" y="11.6" font-size="10" fill="var(--text)"><tspan font-weight="700">${esc(ch.name)}</tspan><tspan fill="var(--text2)">${esc(ch.rest)}</tspan></text></g>`;
+    <rect width="${ch.w}" height="16" rx="4" fill="${bg}" stroke="${bd}" stroke-width="1.5"/>
+    <text x="6" y="11.6" font-size="10" fill="${t1}"><tspan font-weight="700">${esc(ch.name)}</tspan><tspan fill="${t2}">${esc(ch.rest)}</tspan></text></g>`;
 }
 let selRegion=null;
 function renderMap(){
@@ -624,8 +631,7 @@ function renderMap(){
     });
   });
   svg.innerHTML=h;
-  $('#mapLegend').innerHTML=STATUSES.map(s=>`<span><i style="border-color:var(${ST_VAR[s]})"></i>${s}</span>`).join('')+
-    `<span><i style="background:var(--accent-soft);border-color:var(--s1)"></i>Chưa tới cảng (ETA giờ ngày)</span>`+
+  $('#mapLegend').innerHTML=STATUSES.map(s=>`<span><i style="background:${CHIP[s][0]};border-color:${CHIP[s][1]}"></i>${s==='Di chuyển'?'Di chuyển – chưa tới cảng (ETA giờ ngày)':s}</span>`).join('')+
     (none.length?`<span style="flex-basis:100%">Chưa cập nhật: <b>${none.map(b=>esc(b.name)).join(', ')}</b></span>`:'');
   renderRegDetail();
 }
