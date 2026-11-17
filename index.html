@@ -576,6 +576,8 @@ const CHIP={ // nền, viền, chữ tên, chữ phụ
   'Chờ dỡ':['#FCEBEB','#E24B4A','#791F1F','#A32D2D'],
   'Đang dỡ':['#A32D2D','#A32D2D','#FFFFFF','#FCEBEB'],
   'Chưa cập nhật':['#F1EFE8','#888780','#444441','#5F5E5A']};
+const CHIP_ORDER=['Đang xếp','Chờ xếp','Đang dỡ','Chờ dỡ'];
+function chipRank(c){if(c.moving)return 9;const i=CHIP_ORDER.indexOf(c.s);return i<0?8:i}
 function chipSVG(ch,x,y){
   const [bg,bd,t1,t2]=CHIP[ch.c.s]||CHIP['Chưa cập nhật'];
   return `<g class="bg" data-bid="${esc(ch.b.id)}" transform="translate(${x},${y})" style="cursor:pointer">
@@ -597,7 +599,7 @@ function renderMap(){
   const VIS=REGIONS.filter(r=>r.rows.length);
   VIS.forEach(r=>{
     r.rows=[];
-    r.ports.forEach(p=>{const items=(byPort[p]||[]).sort((a,b)=>(a.c.moving?1:0)-(b.c.moving?1:0));if(!items.length)return;
+    r.ports.forEach(p=>{const items=(byPort[p]||[]).sort((a,b)=>chipRank(a.c)-chipRank(b.c)||(a.c.moving?(a.c.eta||0)-(b.c.eta||0):0));if(!items.length)return;
       const lines=[[]];let x=0;
       items.forEach(ch=>{if(x+ch.w>maxW&&lines[lines.length-1].length){lines.push([]);x=0}lines[lines.length-1].push({ch,x});x+=ch.w+5});
       r.rows.push({p,lines})});
