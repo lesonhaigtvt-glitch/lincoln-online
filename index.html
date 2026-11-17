@@ -83,12 +83,12 @@ aside.chat{border-left:1px solid var(--line);background:var(--surface);display:f
 .pill .sw{width:8px;height:8px;border-radius:50%;background:currentColor}
 .tag{display:inline-block;background:var(--accent-soft);color:var(--accent);border-radius:6px;padding:0 6px;font-weight:600}
 .notechip{display:inline-block;background:var(--note);color:var(--note-text);border-radius:6px;padding:1px 7px;font-size:12px;font-weight:600}
-.kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:16px}
 .kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:12px 14px}
 .kpi .l{font-size:12px;color:var(--text2)}
 .kpi .v{font-size:26px;font-weight:700;margin-top:2px;font-variant-numeric:tabular-nums}
 .kpi .d{font-size:12px;color:var(--muted)}
-.kpi .kl{margin-top:4px;display:grid;gap:1px}.kpi .kl div{display:flex;justify-content:space-between;gap:6px}.kpi .kl b{color:var(--text);font-variant-numeric:tabular-nums}
+.kpi .kl{margin-top:6px;display:grid;gap:3px}.kpi .kl div{display:grid;grid-template-columns:1fr auto auto;gap:10px;align-items:baseline;white-space:nowrap}.kpi .kl b{color:var(--text);font-variant-numeric:tabular-nums;text-align:right}.kpi .kl i{font-style:normal;color:var(--text2);text-align:right;min-width:62px;font-variant-numeric:tabular-nums}.kpi .kl.two div{grid-template-columns:1fr auto}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th{text-align:left;font-weight:600;color:var(--text2);font-size:12px;padding:7px 8px;border-bottom:1px solid var(--line2);white-space:nowrap}
 td{padding:7px 8px;border-bottom:1px solid var(--line);vertical-align:middle}
@@ -96,7 +96,7 @@ td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
 tr:hover td{background:var(--surface2)}
 .tablewrap{overflow:auto}
 .mapwrap{position:relative}
-svg#map{width:100%;max-width:880px;height:auto;display:block;margin:0 auto;background:var(--land);border-radius:10px}
+svg#map{width:100%;max-width:1000px;height:auto;display:block;margin:0 auto;background:var(--land);border-radius:10px}
 #bargePick .btn{padding:5px 10px;min-width:52px;font-size:13px}
 #bargePanel .btn{padding:5px 11px;font-size:13px;border-radius:8px}
 #bargePanel .portGroup{margin-bottom:4px}
@@ -319,7 +319,7 @@ const REGIONS=[
   {id:'SPITC',name:'SPITC',ports:['SPITC','Cát Lái'],side:'R'},
   {id:'CM',name:'Cái Mép',ports:['TCIT','ODA','CMIT','SSIT','GML','PAP','H.Thái'],side:'R'},
 ];
-const MAP={W:900,boxW:300,spine:450,head:28,rowH:19,gap:18,H:400};
+const MAP={W:1000,boxW:478,spine:500,head:28,rowH:19,gap:18,H:400};
 (function layoutMap(){let yL=14,yR=14;REGIONS.forEach(r=>{r.h=MAP.head+r.ports.length*MAP.rowH+8;
   if(r.side==='L'){r.x0=14;r.y0=yL;yL+=r.h+MAP.gap}else{r.x0=MAP.W-14-MAP.boxW;r.y0=yR;yR+=r.h+MAP.gap}
   r.cy=r.y0+r.h/2;r.ex=r.side==='L'?r.x0+MAP.boxW:r.x0});MAP.H=Math.max(yL,yR)-MAP.gap+14})();
@@ -407,12 +407,12 @@ function legsOf(bid){
   if(p&&p.s==='Di chuyển'&&p.eta&&p.eta<=now)out.push({c:p.c,ts:p.eta,fl:p.fl||[],tl:p.tl||[]});
   return out;
 }
-const ROUTES=[['CM-SWC','Cái Mép – SWC'],['CM-VICT','Cái Mép – VICT'],['ICD','ICDs']];
-const BROUTES=[['CM-SWC','Cái Mép – SWC'],['ICD-CM','ICDs – Cái Mép']];
+const ROUTES=[['CM-SWC','Cái Mép – SWC'],['CM-ICD','Cái Mép – ICDs (+VICT)']];
+const BROUTES=[['CM-SWC','Cái Mép – SWC'],['ICD-CM','ICDs (+VICT) – Cái Mép']];
 const MAIN_REG=[['SWC','SWC'],['ICD','ICDs'],['CM','Cái Mép'],['VICT','VICT']];
 function legRegs(l){return new Set([PORT_REGION[(l.fl||[])[0]],PORT_REGION[(l.tl||[])[0]]].filter(Boolean))}
-function routeKey(l){const r=legRegs(l);if(r.has('ICD'))return 'ICD';if(r.has('CM')&&r.has('SWC'))return 'CM-SWC';if(r.has('CM')&&r.has('VICT'))return 'CM-VICT';return null}
-function bRouteKey(l){const r=legRegs(l);if(r.has('CM')&&r.has('SWC'))return 'CM-SWC';if(r.has('ICD')&&r.has('CM'))return 'ICD-CM';return null}
+function routeKey(l){const r=legRegs(l);if(!r.has('CM'))return null;if(r.has('SWC'))return 'CM-SWC';if(r.has('ICD')||r.has('VICT'))return 'CM-ICD';return null}
+function bRouteKey(l){const k=routeKey(l);return k==='CM-ICD'?'ICD-CM':k}
 function routeStats(ids,a,b){ // chỉ sà lan nội bộ
   const R={};ROUTES.forEach(([k])=>R[k]={goods:0,all:0});const B={};BROUTES.forEach(([k])=>B[k]=0);
   ids.forEach(id=>legsOf(id).forEach(l=>{if(l.ts<a||l.ts>=b)return;const k=routeKey(l);
@@ -570,7 +570,7 @@ function chipInfo(b,c){
   return {b,c,name:String(b.name),rest,w:Math.round(12+(String(b.name).length*6.4)+rest.length*5.5)};
 }
 function chipSVG(ch,x,y){
-  const vendor=ch.b.type==='Vendor';const col=vendor?'#8a8a86':`var(${ST_VAR[ch.c.s]})`;
+  const col=`var(${ST_VAR[ch.c.s]})`;
   return `<g class="bg" data-bid="${esc(ch.b.id)}" transform="translate(${x},${y})" style="cursor:pointer">
     <rect width="${ch.w}" height="16" rx="4" fill="${ch.c.moving?'var(--accent-soft)':'var(--surface)'}" stroke="${col}" stroke-width="1.7"/>
     <text x="6" y="11.6" font-size="10" fill="var(--text)"><tspan font-weight="700">${esc(ch.name)}</tspan><tspan fill="var(--text2)">${esc(ch.rest)}</tspan></text></g>`;
@@ -604,11 +604,10 @@ function renderMap(){
   let h='';
   if(!VIS.length){svg.setAttribute('viewBox','0 0 900 70');svg.innerHTML='<text x="450" y="40" text-anchor="middle" font-size="13" fill="var(--muted)">Chưa có sà lan nào khai báo cảng</text>';$('#mapLegend').innerHTML='';renderRegDetail();return}
   const ys=VIS.map(r=>r.cy);const y1=Math.min(...ys),y2=Math.max(...ys);
-  h+=`<line x1="${MAP.spine}" y1="${y1-8}" x2="${MAP.spine}" y2="${y2+8}" stroke="var(--river)" stroke-width="24" stroke-linecap="round"/>`;
-  VIS.forEach(r=>h+=`<line x1="${r.ex}" y1="${r.cy}" x2="${MAP.spine}" y2="${r.cy}" stroke="var(--river)" stroke-width="14"/>`);
+  h+=`<line x1="${MAP.spine}" y1="${y1-8}" x2="${MAP.spine}" y2="${y2+8}" stroke="var(--river)" stroke-width="8" stroke-linecap="round"/>`;
+  VIS.forEach(r=>h+=`<line x1="${r.ex}" y1="${r.cy}" x2="${MAP.spine}" y2="${r.cy}" stroke="var(--river)" stroke-width="5"/>`);
   h+=`<line x1="${MAP.spine}" y1="${y1-8}" x2="${MAP.spine}" y2="${y2+8}" stroke="var(--river-line)" stroke-width="1.2" stroke-dasharray="5 5"/>`;
   const my=(y1+y2)/2;
-  if(y2-y1>160)h+=`<text x="${MAP.spine+4}" y="${my}" transform="rotate(90 ${MAP.spine+4} ${my})" text-anchor="middle" font-size="10" font-style="italic" fill="var(--accent)" opacity=".7">Sông Sài Gòn · Đồng Nai · Nhà Bè · Lòng Tàu</text>`;
   VIS.forEach(r=>{
     const atPort=new Set(),inb=new Set();r.rows.forEach(q=>q.lines.flat().forEach(({ch})=>(ch.c.moving?inb:atPort).add(ch.b.id)));
     const teu=[...atPort].reduce((s,id)=>s+(+barges[id]?.teu||0),0);
@@ -626,7 +625,7 @@ function renderMap(){
   });
   svg.innerHTML=h;
   $('#mapLegend').innerHTML=STATUSES.map(s=>`<span><i style="border-color:var(${ST_VAR[s]})"></i>${s}</span>`).join('')+
-    `<span><i style="border-color:#8a8a86"></i>Vendor (viền xám)</span><span><i style="background:var(--accent-soft);border-color:var(--s1)"></i>Chưa tới cảng (ETA giờ ngày)</span>`+
+    `<span><i style="background:var(--accent-soft);border-color:var(--s1)"></i>Chưa tới cảng (ETA giờ ngày)</span>`+
     (none.length?`<span style="flex-basis:100%">Chưa cập nhật: <b>${none.map(b=>esc(b.name)).join(', ')}</b></span>`:'');
   renderRegDetail();
 }
@@ -704,14 +703,19 @@ function renderDash(){
   const mainAt=MAIN_REG.map(([id,n])=>[n,atp.filter(x=>x.c.region===id)]);
   const mainN=mainAt.reduce((s,[,a])=>s+a.length,0),mainT=mainAt.reduce((s,[,a])=>s+teu(a),0);
   const lines=rows=>`<div class="kl">${rows.map(([n,v])=>`<div><span>${n}</span><b>${v}</b></div>`).join('')}</div>`;
-  const rTot=ROUTES.reduce((s,[k])=>s+RS.R[k].all,0)/2,gTot=ROUTES.reduce((s,[k])=>s+RS.R[k].goods,0),bTot=BROUTES.reduce((s,[k])=>s+RS.B[k],0);
+  const rTot=ROUTES.reduce((s,[k])=>s+RS.R[k].all,0)/2,bTot=BROUTES.reduce((s,[k])=>s+RS.B[k],0);
+  const row=(n,a)=>`<div><span>${n}</span><b>${a.length} SL</b><i>${teu(a)} TEU</i></div>`;
+  const toReg=ids=>mov.filter(m=>ids.includes(PORT_REGION[m.c.pl[0]]));
+  const inReg=ids=>atp.filter(x=>ids.includes(x.c.region));
+  const swcAll=[...inReg(['SWC']),...toReg(['SWC'])],icdAll=[...inReg(['ICD','VICT']),...toReg(['ICD','VICT'])];
+  const mainAll=[...inReg(['SWC','ICD','CM','VICT']),...toReg(['SWC','ICD','CM','VICT'])];
+  const rr=rows=>`<div class="kl two">${rows.map(([n,v])=>`<div><span>${n}</span><b>${v}</b></div>`).join('')}</div>`;
   $('#kpis').innerHTML=[
     ['Tổng sà lan',list.length,`${nb} nội bộ · ${list.length-nb} vendor`],
-    ['Di chuyển',mov.length,(teu(mov)?teu(mov)+' TEU · ':'')+'đang hành trình'],
-    ['Tại khu vực cảng',mainN,(mainT?mainT+' TEU':'SWC · ICDs · Cái Mép · VICT')+lines(mainAt.map(([n,a])=>[n,a.length]))],
-    ['Round tuần <span class="sub">nội bộ</span>',num(rTot),lines(ROUTES.map(([k,n])=>[n,num(RS.R[k].all/2)]))],
-    ['Lượt hàng tuần <span class="sub">nội bộ</span>',gTot,lines(ROUTES.map(([k,n])=>[n,RS.R[k].goods]))],
-    ['Ballast tuần <span class="sub">nội bộ</span>',bTot,lines(BROUTES.map(([k,n])=>[n,RS.B[k]]))],
+    ['Di chuyển',mov.length,`<div class="kl">${row('Đi Cái Mép',toReg(['CM']))}${row('Về SWC',toReg(['SWC']))}</div>`],
+    ['Tại khu vực cảng',`${mainAll.length} <span class="sub" style="font-size:14px">SL · ${teu(mainAll)} TEU</span>`,`<div class="kl">${row('SWC',swcAll)}${row('ICDs + VICT',icdAll)}</div><div style="margin-top:3px;font-size:11px">Gồm cả sà lan đang hành trình về khu vực</div>`],
+    ['Round tuần <span class="sub">nội bộ</span>',num(rTot),rr(ROUTES.map(([k,n])=>[n,num(RS.R[k].all/2)]))],
+    ['Ballast tuần <span class="sub">nội bộ</span>',bTot,rr(BROUTES.map(([k,n])=>[n,RS.B[k]]))],
   ].map(k=>`<div class="kpi"><div class="l">${k[0]}</div><div class="v">${k[1]}</div><div class="d">${k[2]}</div></div>`).join('');
 
   // bảng khu vực
