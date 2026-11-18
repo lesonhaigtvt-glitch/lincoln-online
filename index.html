@@ -196,6 +196,7 @@ svg#map{width:100%;max-width:1000px;height:auto;display:block;margin:0 auto;back
       </div>
       <div class="row" style="margin-top:18px">
         <button class="btn primary" id="submitBtn">Cập nhật tình trạng</button>
+        <button class="btn" id="standbyBtn" hidden title="Chỉ dành cho sà lan Vendor">⏸ Chuyển sang Standby</button>
       </div>
       <div class="sub" style="margin-top:8px">Quy trình: Chờ xếp → Đang xếp → Di chuyển → Chờ dỡ → Đang dỡ → Chờ xếp… Kết thúc mỗi <b>hành trình</b> (tới ETA hoặc khai Chờ dỡ / Đang dỡ) được tính <b>1 lượt</b>. Khai bỏ qua bước nào thì coi như đã làm xong bước đó.</div>
     </div>
@@ -331,8 +332,8 @@ const STATUSES=['Chờ xếp','Đang xếp','Di chuyển','Chờ dỡ','Đang d�
 const ST_IDX={'Chờ xếp':0,'Đang xếp':1,'Di chuyển':2,'Chờ dỡ':3,'Đang dỡ':4};
 const PORT_ST=['Đang xếp','Đang dỡ','Chờ xếp','Chờ dỡ'];
 const INLAND=['SWC','ICD','VICT'],SEA=['CM','SPITC','HP'];
-const ST_SHORT={'Đang di chuyển':'Chạy','Đang xếp':'Xếp','Đang dỡ':'Dỡ','Chờ xếp':'Chờ xếp','Chờ dỡ':'Chờ dỡ','Chờ giao':'Chờ giao','Chưa cập nhật':'—'};
-const ST_VAR={'Di chuyển':'--s1','Đang di chuyển':'--s1','Đang xếp':'--s3','Đang dỡ':'--s2','Chờ xếp':'--s7','Chờ dỡ':'--s8','Chờ giao':'--s4','Chưa cập nhật':'--muted'};
+const ST_SHORT={'Đang di chuyển':'Chạy','Đang xếp':'Xếp','Đang dỡ':'Dỡ','Chờ xếp':'Chờ xếp','Chờ dỡ':'Chờ dỡ','Chờ giao':'Chờ giao','Chưa cập nhật':'—','Standby':'Standby'};
+const ST_VAR={'Di chuyển':'--s1','Đang di chuyển':'--s1','Đang xếp':'--s3','Đang dỡ':'--s2','Chờ xếp':'--s7','Chờ dỡ':'--s8','Chờ giao':'--s4','Chưa cập nhật':'--muted','Standby':'--muted'};
 const LOAD_ST=['Đang xếp','Chờ xếp'];
 // Chỉ dùng khi trang chạy ngoài hệ thống dữ liệu dùng chung (xem thử)
 const DEMO=DEFAULT_BARGES;
@@ -380,6 +381,7 @@ function norm(st){ // quy đổi dữ liệu các phiên bản trước
 function cur(bid){
   const st=norm(statuses[bid]);const now=Date.now();
   if(!st||!st.s) return {s:'Chưa cập nhật',region:null,pl:[],fl:[],tl:[]};
+  if(st.s==='Standby') return {...st,standby:true,pl:[],fl:[],tl:[],region:null,since:st.time};
   if(st.s==='Di chuyển'){
     const target=st.c==='Ballast'?'Chờ xếp':'Chờ dỡ';
     if(st.eta&&st.eta<=now){const pl=st.tl;const r={...st,s:target,pl,p:pl[0],region:PORT_REGION[pl[0]]||null,since:st.eta,auto:true};if(target==='Chờ xếp'){r.fl=pl;r.tl=[]}return r}
@@ -491,7 +493,7 @@ function portPicker(sel,key,groups){
 function formSpec(){
   if(F.c==='Ballast')return {from:true,to:true,eta:true,status:false};
   switch(F.s){
-    case 'Chờ xếp':return {from:true};
+    case 'Chờ xếp':return {from:true,to:true,toOpt:true};
     case 'Đang xếp':return {from:true,to:true};
     case 'Di chuyển':return {eta:true,to:!F.tl.length||F.editTo,sum:true};
     default:return {to:!F.tl.length||F.editTo,sum:true}; // Chờ dỡ, Đang dỡ
@@ -509,11 +511,12 @@ function renderForm(){
   const bl=F.c==='Ballast';
   $('#fFrom').hidden=!sp.from;$('#fTo').hidden=!sp.to;$('#fEta').hidden=!sp.eta;
   $('#lFrom').innerHTML=(bl?'Cảng đi':'Cảng xếp')+' <span class="sub">— chọn được nhiều cảng</span>';
-  $('#lTo').innerHTML=(bl?'Cảng đến':'Cảng dỡ')+' <span class="sub">— chọn được nhiều cảng</span>';
+  $('#lTo').innerHTML=(bl?'Cảng đến':'Cảng dỡ')+(sp.toOpt?' <span class="sub">— không bắt buộc, chọn nếu đã biết</span>':' <span class="sub">— chọn được nhiều cảng</span>');
   if(sp.from)$('#pickFrom').innerHTML=portPicker(F.fl,'fl',gL);
   if(sp.to)$('#pickTo').innerHTML=portPicker(F.tl,'tl',gU);
   $('#fSum').innerHTML=sp.sum&&F.tl.length&&!sp.to?`<div class="state" style="padding:8px 12px;margin-top:10px"><span>${F.s==='Di chuyển'?`Hành trình: <b class="c-load">${esc(pj(F.fl)||'?')}</b> → <b class="c-unload">${esc(pj(F.tl))}</b>`:`Cảng dỡ: <b class="c-unload">${esc(pj(F.tl))}</b>`}</span><button class="btn small" data-edit="1">Đổi cảng</button></div>`:'';
   $('#submitBtn').disabled=!canWrite;
+  $('#standbyBtn').hidden=barges[F.bid].type!=='Vendor';$('#standbyBtn').disabled=!canWrite||cur(F.bid).standby;
 }
 $('#bargePanel').addEventListener('click',e=>{
   const b=e.target.closest('button');if(!b)return;
@@ -526,7 +529,8 @@ function renderCurState(){
   if(!F.bid||!barges[F.bid])return;
   const c=cur(F.bid);
   let where='';
-  if(c.moving) where=`Hành trình <b>${esc(pj(c.fl)||'?')}</b> → <b>${esc(pj(c.tl))}</b> · ETA ${fmt(c.eta)}`;
+  if(c.standby) where=`Đang <b>Standby</b> – ẩn khỏi bản đồ khu vực cảng. Cập nhật một tình trạng bất kỳ để đưa sà lan hoạt động trở lại.`;
+  else if(c.moving) where=`Hành trình <b>${esc(pj(c.fl)||'?')}</b> → <b>${esc(pj(c.tl))}</b> · ETA ${fmt(c.eta)}`;
   else if(c.pl.length) where=`tại <b>${esc(pj(c.pl))}</b> (${esc(RBY[c.region]?.name||'')}) · từ ${fmt(c.since)}${!LOAD_ST.includes(c.s)&&c.fl?.length?` <span class="sub">(xếp tại ${esc(pj(c.fl))})</span>`:LOAD_ST.includes(c.s)&&c.tl?.length?` <span class="sub">(dỡ tại ${esc(pj(c.tl))})</span>`:''}`;
   $('#curState').innerHTML=`<div class="state">
     <div><div class="sub">Tình trạng hiện tại</div><div class="big" style="color:var(${ST_VAR[c.s]})">${esc(c.s)}</div></div>
@@ -545,11 +549,11 @@ $('#submitBtn').onclick=async()=>{
   const sp=formSpec();const now=Date.now();
   const s=F.c==='Ballast'?'Di chuyển':F.s;
   if(sp.from&&!F.fl.length)return toast(F.c==='Ballast'?'Chọn cảng đi':'Chọn cảng xếp');
-  if((sp.to||sp.sum||F.c==='Ballast')&&!F.tl.length)return toast(F.c==='Ballast'?'Chọn cảng đến':'Chọn cảng dỡ');
+  if(((sp.to&&!sp.toOpt)||sp.sum||F.c==='Ballast')&&!F.tl.length)return toast(F.c==='Ballast'?'Chọn cảng đến':'Chọn cảng dỡ');
   let eta=null;
   if(s==='Di chuyển'){eta=combine($('#etaD').value,$('#etaT').value);if(isNaN(eta))return toast('Nhập ngày giờ ETA')}
   if(F.c==='Ballast'&&F.fl.length===1&&F.tl.length===1&&F.fl[0]===F.tl[0])return toast('Cảng đi và cảng đến phải khác nhau');
-  const fl=[...F.fl],tl=s==='Chờ xếp'?[]:[...F.tl];
+  const fl=[...F.fl],tl=[...F.tl];
   const before=legsOf(bid).length;
   const ev={k:'st2',s,c:F.c,fl,tl,eta,ts:now};
   const ns={v2:true,s,c:F.c,fl,tl,eta,time:now,upd:now,by:myId||'local'};
@@ -558,6 +562,14 @@ $('#submitBtn').onclick=async()=>{
     toast('Đã cập nhật '+bName(bid)+': '+s+(eta?' · ETA '+fmt(eta):'')+(after>before?' · tính '+(after-before)+' lượt':''));
     F.editTo=false;
   }catch(e){}
+};
+
+$('#standbyBtn').onclick=async()=>{
+  const bid=F.bid;if(!bid||barges[bid]?.type!=='Vendor')return;
+  const now=Date.now();const prev=statuses[bid];
+  const ev={k:'st2',s:'Standby',c:prev?.c||F.c,fl:[],tl:[],eta:null,ts:now};
+  const ns={v2:true,s:'Standby',c:prev?.c||F.c,fl:[],tl:[],eta:null,time:now,upd:now,by:myId||'local'};
+  try{await saveState(bid,ns,[ev]);F.s='Chờ xếp';F.fl=[];F.tl=[];renderForm();toast(bName(bid)+' đã chuyển sang Standby – ẩn khỏi bản đồ')}catch(e){}
 };
 
 // ===================== BẢN ĐỒ =====================
@@ -588,8 +600,9 @@ let selRegion=null;
 function renderMap(){
   const svg=$('#map');if(!svg)return;
   const list=bargeList();
-  const byPort={},none=[];
+  const byPort={},none=[],sby=[];
   list.forEach(b=>{const c=cur(b.id);
+    if(c.standby){sby.push(b);return}
     if(c.moving){const p=c.pl[0];if(p&&PORT_REGION[p])(byPort[p]=byPort[p]||[]).push(chipInfo(b,c));else none.push(b)}
     else if(c.pl.length)c.pl.forEach(p=>{if(PORT_REGION[p])(byPort[p]=byPort[p]||[]).push(chipInfo(b,c))});
     else none.push(b)});
@@ -634,7 +647,8 @@ function renderMap(){
   });
   svg.innerHTML=h;
   $('#mapLegend').innerHTML=STATUSES.map(s=>`<span><i style="background:${CHIP[s][0]};border-color:${CHIP[s][1]}"></i>${s==='Di chuyển'?'Di chuyển – chưa tới cảng (ETA giờ ngày)':s}</span>`).join('')+
-    (none.length?`<span style="flex-basis:100%">Chưa cập nhật: <b>${none.map(b=>esc(b.name)).join(', ')}</b></span>`:'');
+    (none.length?`<span style="flex-basis:100%">Chưa cập nhật: <b>${none.map(b=>esc(b.name)).join(', ')}</b></span>`:'')+
+    (sby.length?`<span style="flex-basis:100%">Vendor Standby (ẩn): <b>${sby.map(b=>esc(b.name)).join(', ')}</b></span>`:'');
   renderRegDetail();
 }
 function renderRegDetail(){
@@ -719,7 +733,7 @@ function renderDash(){
   const mainAll=[...inReg(['SWC','ICD','CM','VICT']),...toReg(['SWC','ICD','CM','VICT'])];
   const rr=rows=>`<div class="kl two">${rows.map(([n,v])=>`<div><span>${n}</span><b>${v}</b></div>`).join('')}</div>`;
   $('#kpis').innerHTML=[
-    ['Tổng sà lan',list.length,`${nb} nội bộ · ${list.length-nb} vendor`],
+    ['Tổng sà lan',list.length,`${nb} nội bộ · ${list.length-nb} vendor${list.filter(x=>x.c.standby).length?` (${list.filter(x=>x.c.standby).length} standby)`:''}`],
     ['Di chuyển',mov.length,`<div class="kl">${row('Đi Cái Mép',toReg(['CM']))}${row('Về SWC',toReg(['SWC']))}</div>`],
     ['Tại khu vực cảng',`${mainAll.length} <span class="sub" style="font-size:14px">SL · ${teu(mainAll)} TEU</span>`,`<div class="kl">${row('SWC',swcAll)}${row('ICDs + VICT',icdAll)}</div><div style="margin-top:3px;font-size:11px">Gồm cả sà lan đang hành trình về khu vực</div>`],
     ['Round tuần <span class="sub">nội bộ</span>',num(rTot),rr(ROUTES.map(([k,n])=>[n,num(RS.R[k].all/2)]))],
