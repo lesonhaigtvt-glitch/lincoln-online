@@ -416,10 +416,12 @@ function legRegs(l){return new Set([PORT_REGION[(l.fl||[])[0]],PORT_REGION[(l.tl
 function routeKey(l){const r=legRegs(l);if(!r.has('CM'))return null;if(r.has('SWC'))return 'CM-SWC';if(r.has('ICD')||r.has('VICT'))return 'CM-ICD';return null}
 function bRouteKey(l){const k=routeKey(l);return k==='CM-ICD'?'ICD-CM':k}
 function routeStats(ids,a,b){ // chỉ sà lan nội bộ
-  const R={};ROUTES.forEach(([k])=>R[k]={goods:0,all:0});const B={};BROUTES.forEach(([k])=>B[k]=0);
+  const R={};ROUTES.forEach(([k])=>R[k]={goods:0,all:0,ids:new Set()});const B={};BROUTES.forEach(([k])=>B[k]=0);
   ids.forEach(id=>legsOf(id).forEach(l=>{if(l.ts<a||l.ts>=b)return;const k=routeKey(l);
-    if(k){R[k].all++;if(l.c!=='Ballast')R[k].goods++}
+    if(k){R[k].all++;R[k].ids.add(id);if(l.c!=='Ballast')R[k].goods++}
     if(l.c==='Ballast'){const bk=bRouteKey(l);if(bk)B[bk]++}}));
+  // round/sà lan của tuyến = tổng lượt ÷ 2 ÷ số sà lan thực hiện tuyến đó
+  ROUTES.forEach(([k])=>{const n=R[k].ids.size;R[k].n=n;R[k].rpb=n?R[k].all/2/n:0});
   return {R,B};
 }
 function statsOf(bid,a,b){
@@ -725,7 +727,8 @@ function renderDash(){
   const mainAt=MAIN_REG.map(([id,n])=>[n,atp.filter(x=>x.c.region===id)]);
   const mainN=mainAt.reduce((s,[,a])=>s+a.length,0),mainT=mainAt.reduce((s,[,a])=>s+teu(a),0);
   const lines=rows=>`<div class="kl">${rows.map(([n,v])=>`<div><span>${n}</span><b>${v}</b></div>`).join('')}</div>`;
-  const rTot=ROUTES.reduce((s,[k])=>s+RS.R[k].all,0)/2,bTot=BROUTES.reduce((s,[k])=>s+RS.B[k],0);
+  const num2=x=>(Math.round(x*100)/100).toLocaleString('vi-VN');
+  const rTot=ROUTES.reduce((s,[k])=>s+RS.R[k].rpb,0)/ROUTES.length,bTot=BROUTES.reduce((s,[k])=>s+RS.B[k],0);
   const row=(n,a)=>`<div><span>${n}</span><b>${a.length} SL</b><i>${teu(a)} TEU</i></div>`;
   const toReg=ids=>mov.filter(m=>ids.includes(PORT_REGION[m.c.pl[0]]));
   const inReg=ids=>atp.filter(x=>ids.includes(x.c.region));
@@ -736,7 +739,7 @@ function renderDash(){
     ['Tổng sà lan',list.length,`${nb} nội bộ · ${list.length-nb} vendor${list.filter(x=>x.c.standby).length?` (${list.filter(x=>x.c.standby).length} standby)`:''}`],
     ['Di chuyển',mov.length,`<div class="kl">${row('Đi Cái Mép',toReg(['CM']))}${row('Về SWC',toReg(['SWC']))}</div>`],
     ['Tại khu vực cảng',`${mainAll.length} <span class="sub" style="font-size:14px">SL · ${teu(mainAll)} TEU</span>`,`<div class="kl">${row('SWC',swcAll)}${row('ICDs + VICT',icdAll)}</div><div style="margin-top:3px;font-size:11px">Gồm cả sà lan đang hành trình về khu vực</div>`],
-    ['Round tuần <span class="sub">nội bộ</span>',num(rTot),rr(ROUTES.map(([k,n])=>[n,num(RS.R[k].all/2)]))],
+    ['Round tuần <span class="sub">nội bộ</span>',`${num2(rTot)} <span class="sub" style="font-size:12px">round/sà lan</span>`,`<div class="kl two">${ROUTES.map(([k,n])=>`<div title="${RS.R[k].all} lượt ÷ 2 ÷ ${RS.R[k].n} sà lan"><span>${n.replace(' (+VICT)','')} <span style="font-size:11px">(${RS.R[k].all} lượt · ${RS.R[k].n} SL)</span></span><b>${num2(RS.R[k].rpb)}</b></div>`).join('')}</div>`],
     ['Ballast tuần <span class="sub">nội bộ</span>',bTot,rr(BROUTES.map(([k,n])=>[n,RS.B[k]]))],
   ].map(k=>`<div class="kpi"><div class="l">${k[0]}</div><div class="v">${k[1]}</div><div class="d">${k[2]}</div></div>`).join('');
 
